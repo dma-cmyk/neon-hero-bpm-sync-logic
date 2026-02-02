@@ -273,12 +273,26 @@
     import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
     import { getFirestore, collection, addDoc, getDocs, updateDoc, doc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-    const firebaseConfig = (typeof window.__firebase_config !== 'undefined' && window.__firebase_config) 
+    // -----------------------------------------------------------------------------------------
+    // 【設定エリア】Firebaseコンソールの設定(const firebaseConfig = {...})をここに貼り付けてください
+    // -----------------------------------------------------------------------------------------
+    const firebaseConfig = {
+        apiKey: "AIzaSyBiCTU35eBaVXhTfnd-XDifHDDxXZALQCM",
+        authDomain: "neon-hero-2b368.firebaseapp.com",
+        projectId: "neon-hero-2b368",
+        storageBucket: "neon-hero-2b368.firebasestorage.app",
+        messagingSenderId: "904605896059",
+        appId: "1:904605896059:web:87c5ab4437041e01e381de"
+    };
+    // -----------------------------------------------------------------------------------------
+
+    // (自動処理: プレビュー環境か、上記の設定を使うかを自動判定します。この行は変更しないでください)
+    const activeConfig = (typeof window.__firebase_config !== 'undefined' && window.__firebase_config) 
         ? JSON.parse(window.__firebase_config) 
-        : { apiKey: "API_KEY", projectId: "PROJECT_ID" }; // Placeholder fallback
+        : firebaseConfig; 
     
     const targetAppId = (typeof window.__app_id !== 'undefined' && window.__app_id) ? window.__app_id : 'neon-hero-v5-sonic';
-    const app = initializeApp(firebaseConfig);
+    const app = initializeApp(activeConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
     let currentUser = null;
