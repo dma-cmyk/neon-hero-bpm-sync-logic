@@ -208,10 +208,6 @@
         .key-name { font-size: 18px; color: var(--neon-cyan); font-weight: 900; font-family: 'Exo 2', sans-serif; text-transform: uppercase; }
         .lane-arrow { font-size: 28px; font-weight: 900; line-height: 1; filter: drop-shadow(0 0 8px currentColor); }
 
-        #touch-controls { position: absolute; bottom: 0; left: 0; width: 100%; height: 160px; display: grid; grid-template-columns: repeat(4, 1fr); z-index: 20; }
-        .touch-btn { background: linear-gradient(to bottom, transparent, rgba(128, 128, 128, 0.08)); border-top: 1px solid rgba(128, 128, 128, 0.15); display: flex; align-items: center; justify-content: center; font-size: 38px; color: rgba(128, 128, 128, 0.4); user-select: none; transition: all 0.15s; pointer-events: auto; }
-        .touch-btn.active { background: rgba(0, 242, 255, 0.15); color: var(--neon-cyan); border-top: 5px solid var(--neon-cyan); text-shadow: 0 0 20px var(--neon-cyan); }
-
         /* BPM Control - Improved visibility */
         .bpm-control { display: flex; align-items: center; gap: 10px; width: 100%; }
         #bpm-input { flex: 1; font-size: 18px; background: rgba(0,0,0,0.3); border-color: var(--neon-lime); color: var(--neon-lime); }
@@ -813,6 +809,9 @@ tapBpmBtn.addEventListener('click', () => {
             bpmMessage.innerText = `SYNCED: ${bpm} BPM`;
             bpmMessage.style.color = "var(--neon-lime)";
             
+            // BPM保存
+            localStorage.setItem('lastBpm', bpm);
+
             // BPMが変更されたらマップ再生成 (オフセット情報付き)
             if (currentDuration > 0) {
                 notes = generateMap(currentDuration, currentVideoId);
@@ -825,6 +824,8 @@ tapBpmBtn.addEventListener('click', () => {
 });
 // 手動入力時も再生成
 bpmInput.addEventListener('change', () => {
+    const bpm = parseInt(bpmInput.value);
+    localStorage.setItem('lastBpm', bpm);
     if (currentDuration > 0) {
         notes = generateMap(currentDuration, currentVideoId);
     }
@@ -1004,6 +1005,8 @@ function extractYoutubeId(url) {
 
 function loadYoutube(vidId) {
     currentVideoId = vidId;
+    localStorage.setItem('lastVideoId', vidId); // 動画IDを保存
+    
     ytStatus.innerHTML = `<div class="loader"></div> ${uiText.msg_loading}`;
     previewPlaceholder.classList.add('hidden');
     previewContent.innerHTML = '<div id="yt-player-target"></div>';
@@ -1477,11 +1480,20 @@ window.addEventListener('resize', resize); resize();
 
 window.addEventListener('DOMContentLoaded', () => {
     toggleAnalysisBtn.style.display = 'none'; // 動画ロード後に表示
+
+    // ローカルストレージからのBPM復元
+    const savedBpm = localStorage.getItem('lastBpm');
+    if (savedBpm) bpmInput.value = savedBpm;
+
     const params = new URLSearchParams(window.location.search);
     const wait = setInterval(() => {
         if (typeof YT !== 'undefined' && YT.Player && typeof window.fetchSharedVideos === 'function') { 
-            const vid = params.get('v');
-            if (vid) { ytUrlInput.value = `https://www.youtube.com/watch?v=${vid}`; loadYoutube(vid); }
+            // URLパラメータ優先、なければローカルストレージを確認
+            const vid = params.get('v') || localStorage.getItem('lastVideoId');
+            if (vid) { 
+                ytUrlInput.value = `https://www.youtube.com/watch?v=${vid}`; 
+                loadYoutube(vid); 
+            }
             clearInterval(wait); 
         }
     }, 500);
