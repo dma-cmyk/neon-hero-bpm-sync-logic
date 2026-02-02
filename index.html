@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ネオン・ヒーロー - ソニック・シンクロ</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Exo+2:wght@300;600;900&family=Noto+Sans+JP:wght@400;700;900&display=swap');
+
+        :root {
+            --bg-color: #03030b;
+            --container-bg: radial-gradient(circle at top, #101030 0%, #03030b 100%);
+            --overlay-bg: rgba(5, 5, 20, 0.85);
+            --text-color: #ffffff;
+            --input-bg: rgba(255, 255, 255, 0.05);
+            --panel-bg: rgba(255, 255, 255, 0.03);
+            --panel-border: rgba(0, 242, 255, 0.3);
+            
+            --neon-cyan: #00f2ff;
+            --neon-pink: #ff007a;
+            --neon-lime: #bcff00;
+            --neon-purple: #9d00ff;
+            --grid-color: rgba(0, 242, 255, 0.15);
+            --shadow-color: rgba(0, 0, 0, 0.8);
+            --shine-gradient: linear-gradient(120deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+        }
+
+        /* ライトモード */
+        body.light-mode {
+            --bg-color: #f0f4f8;
+            --container-bg: linear-gradient(135deg, #eef2ff 0%, #fdeff9 50%, #e0f2fe 100%);
+            --overlay-bg: rgba(255, 255, 255, 0.75);
+            --text-color: #2d3748;
+            --input-bg: rgba(255, 255, 255, 0.9);
+            --panel-bg: rgba(255, 255, 255, 0.5);
+            --panel-border: rgba(66, 153, 225, 0.3);
+            --grid-color: rgba(66, 153, 225, 0.1);
+        }
+
+        body {
+            margin: 0; padding: 0;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'Exo 2', 'Noto Sans JP', sans-serif;
+            overflow: hidden;
+            display: flex; align-items: center; justify-content: center;
+            height: 100vh; touch-action: none; transition: all 0.5s ease;
+        }
+
+        #game-container {
+            position: relative; width: 100%; max-width: 500px; height: 100%; max-height: 850px;
+            background: var(--container-bg);
+            box-shadow: 0 30px 60px var(--shadow-color);
+            overflow: hidden; display: flex; flex-direction: column; border-radius: 20px;
+        }
+
+        /* ビジュアライザー用キャンバス（背景） */
+        #visualizerCanvas {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 1; pointer-events: none; opacity: 0.5;
+        }
+
+        .grid-bg {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background-image: linear-gradient(var(--grid-color) 1px, transparent 1px), linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
+            background-size: 50px 50px; z-index: 2;
+        }
+
+        .grid-bg-inner {
+            width: 100%; height: 200%; background-image: inherit; background-size: inherit;
+            transform: rotateX(60deg) translateY(-25%);
+            animation: grid-scroll 15s linear infinite;
+        }
+        @keyframes grid-scroll { from { background-position: 0 0; } to { background-position: 0 500px; } }
+
+        #media-bg-container {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 3; pointer-events: auto; opacity: 0; transition: opacity 0.8s ease; overflow: hidden;
+        }
+        #game-container.is-playing #media-bg-container { opacity: 0.6; }
+
+        /* ゲームメインキャンバス */
+        #gameCanvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; background: transparent; pointer-events: none; }
+
+        #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; display: flex; flex-direction: column; align-items: center; z-index: 20; }
+
+        /* UI Elements */
+        #theme-toggle {
+            position: absolute; top: 15px; right: 15px; z-index: 150;
+            background: var(--panel-bg); border: 1.5px solid var(--neon-cyan); color: var(--text-color);
+            border-radius: 14px; cursor: pointer; width: 44px; height: 44px;
+            display: flex; align-items: center; justify-content: center;
+            backdrop-filter: blur(10px); box-shadow: 0 8px 15px var(--shadow-color);
+            transition: all 0.3s; font-size: 22px;
+        }
+
+        #skip-intro-btn {
+            position: absolute; top: 70px; right: 15px; z-index: 150;
+            background: var(--panel-bg); border: 1.5px solid var(--neon-lime); color: var(--text-color);
+            padding: 8px 15px; border-radius: 12px; cursor: pointer;
+            backdrop-filter: blur(10px); box-shadow: 0 4px 12px var(--shadow-color);
+            font-size: 11px; font-weight: 900; letter-spacing: 1px; display: none;
+        }
+
+        .score-display { margin-top: 40px; font-size: 32px; font-weight: 900; color: var(--neon-cyan); text-shadow: 0 0 15px var(--neon-cyan); letter-spacing: 2px; }
+        .combo-display { position: absolute; top: 32%; font-size: 72px; font-weight: 900; color: var(--neon-pink); text-shadow: 0 0 30px var(--neon-pink); opacity: 0; }
+        .judgment-display { position: absolute; top: 50%; font-size: 44px; font-weight: 900; text-transform: uppercase; font-style: italic; letter-spacing: 4px; }
+
+        /* Screens */
+        .overlay-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: var(--overlay-bg); backdrop-filter: blur(25px); z-index: 100; display: flex; flex-direction: column; align-items: center; padding: 30px; box-sizing: border-box; overflow-y: auto; animation: fadeIn 0.6s ease-out; }
+
+        /* Components */
+        .btn {
+            position: relative; padding: 16px 30px; font-size: 18px; font-weight: 900; background: linear-gradient(45deg, var(--neon-pink), var(--neon-purple)); color: white; border: none; border-radius: 18px; cursor: pointer; transition: all 0.3s; width: 100%; max-width: 340px; flex-shrink: 0; margin-bottom: 20px; display: flex; align-items: center; justify-content: center; gap: 10px; box-shadow: 0 10px 25px var(--shadow-color); overflow: hidden; letter-spacing: 2px;
+        }
+        .btn:hover:not(:disabled) { transform: translateY(-4px); box-shadow: 0 15px 35px var(--shadow-color); }
+        .btn:disabled { background: #64748b; cursor: not-allowed; opacity: 0.5; }
+
+        .input-group { width: 100%; max-width: 420px; background: var(--panel-bg); padding: 22px; border-radius: 24px; border: 1px solid var(--panel-border); margin-bottom: 20px; box-sizing: border-box; box-shadow: 0 10px 30px var(--shadow-color); flex-shrink: 0; }
+        .input-label { font-size: 12px; color: var(--text-color); opacity: 0.9; margin-bottom: 10px; display: block; text-align: left; letter-spacing: 1.5px; font-weight: 900; text-transform: uppercase; }
+        input[type="text"] { width: 100%; padding: 14px; border-radius: 14px; border: 1.5px solid rgba(128,128,128,0.2); background: var(--input-bg); color: var(--text-color); box-sizing: border-box; text-align: center; font-size: 15px; outline: none; transition: 0.3s; font-weight: 700; }
+        input[type="text"]:focus { border-color: var(--neon-cyan); box-shadow: 0 0 15px var(--neon-cyan); }
+
+        /* Diff & BPM */
+        .diff-selector { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; width: 100%; margin-bottom: 15px; }
+        .diff-btn {
+            padding: 14px; font-size: 14px; font-weight: 900; border-radius: 16px; border: 1.5px solid rgba(128,128,128,0.1); background: var(--input-bg); cursor: pointer; transition: all 0.2s; color: var(--text-color);
+        }
+        .diff-btn.active { background: var(--neon-cyan); color: #fff; box-shadow: 0 0 15px var(--neon-cyan); border-color: transparent; }
+
+        .bpm-container { display: flex; align-items: center; gap: 10px; width: 100%; }
+        .bpm-display { flex-grow: 1; background: var(--input-bg); padding: 12px; border-radius: 12px; border: 1px solid var(--panel-border); text-align: center; font-family: monospace; font-size: 18px; font-weight: 700; color: var(--neon-cyan); width: 60px; }
+        .tap-btn { background: var(--panel-bg); border: 2px solid var(--neon-pink); color: var(--neon-pink); padding: 0 20px; height: 48px; border-radius: 12px; cursor: pointer; font-weight: 900; font-size: 14px; transition: 0.1s; display: flex; align-items: center; justify-content: center; }
+        .tap-btn:active { background: var(--neon-pink); color: white; transform: scale(0.95); }
+
+        .mic-toggle-btn { background: var(--panel-bg); border: 1px solid var(--neon-lime); color: var(--neon-lime); padding: 8px 12px; border-radius: 10px; cursor: pointer; font-size: 11px; font-weight: 900; margin-top: 10px; width: 100%; display: flex; align-items: center; justify-content: center; gap: 6px; transition: 0.3s; }
+        .mic-toggle-btn.active { background: var(--neon-lime); color: #000; box-shadow: 0 0 10px var(--neon-lime); }
+
+        #preview-box { width: 100%; max-width: 420px; aspect-ratio: 16 / 9; background: #000; border-radius: 22px; border: 4px solid var(--neon-cyan); margin-bottom: 30px; overflow: hidden; position: relative; box-shadow: 0 15px 40px var(--shadow-color); flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+        #preview-content iframe { position: absolute; top: 0; left: 0; width: 100% !important; height: 100% !important; border: none; }
+
+        .ranking-container { width: 100%; max-width: 420px; background: var(--panel-bg); border-radius: 24px; padding: 25px; margin-bottom: 30px; border: 1.5px solid var(--panel-border); }
+        .ranking-item { display: flex; padding: 10px 0; border-bottom: 1px solid rgba(128,128,128,0.15); font-size: 14px; }
+        .ranking-rank { color: var(--neon-lime); font-weight: 900; width: 30px; }
+        .ranking-name { flex-grow: 1; font-weight: 700; }
+        .ranking-score { color: var(--neon-cyan); font-weight: 900; font-family: monospace; }
+
+        /* Modal & Lists */
+        .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--overlay-bg); backdrop-filter: blur(40px); z-index: 200; display: none; flex-direction: column; align-items: center; padding: 50px 25px; box-sizing: border-box; }
+        .modal.is-visible { display: flex; animation: fadeIn 0.4s ease; }
+        
+        .shared-item-full { background: var(--input-bg); border: 1px solid var(--panel-border); padding: 10px; border-radius: 14px; cursor: pointer; margin-bottom: 10px; display: flex; gap: 10px; align-items: center; }
+        .shared-item-full:hover { background: var(--panel-bg); border-color: var(--neon-cyan); }
+        .thumbnail-container { width: 80px; height: 45px; border-radius: 8px; overflow: hidden; flex-shrink: 0; background: #000; }
+        .shared-thumbnail { width: 100%; height: 100%; object-fit: cover; }
+        
+        /* Touch Controls */
+        #touch-controls { position: absolute; bottom: 0; left: 0; width: 100%; height: 160px; display: grid; grid-template-columns: repeat(4, 1fr); z-index: 30; }
+        .touch-btn { border-top: 1px solid rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: center; font-size: 30px; color: rgba(255,255,255,0.3); }
+        .touch-btn:active, .touch-btn.active { background: rgba(0, 242, 255, 0.2); color: var(--neon-cyan); box-shadow: 0 0 20px var(--neon-cyan) inset; }
+
+        .hidden { display: none !important; }
+        .loader { border: 3px solid rgba(128,128,128,0.2); border-top: 3px solid var(--neon-cyan); border-radius: 50%; width: 20px; height: 20px; animation: spin 1s linear infinite; margin: 0 auto; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+        .toast { position: fixed; top: 30px; background: var(--neon-purple); color: white; padding: 10px 24px; border-radius: 50px; z-index: 300; font-weight: 700; box-shadow: 0 10px 30px rgba(0,0,0,0.5); font-size: 14px; }
+    </style>
+</head>
+<body class="is-menu">
+
+<div id="game-container">
+    <canvas id="visualizerCanvas"></canvas>
+    <div class="grid-bg"><div class="grid-bg-inner"></div></div>
+    <div id="media-bg-container"></div>
+    <canvas id="gameCanvas"></canvas>
+    
+    <button id="theme-toggle">🌙</button>
+    <button id="skip-intro-btn">SKIP INTRO</button>
+
+    <div id="ui-layer">
+        <div class="score-display">SCORE: <span id="score-val">000000</span></div>
+        <div id="combo-text" class="combo-display">0</div>
+        <div id="judgment-text" class="judgment-display"></div>
+    </div>
+
+    <!-- スタート画面 -->
+    <div id="start-screen" class="overlay-screen">
+        <h1 style="font-size: 32px; margin: 20px 0; color: var(--neon-cyan); text-shadow: 0 0 20px var(--neon-cyan); font-weight: 900; letter-spacing: 3px;">NEON HERO<br><span style="font-size:14px; color:var(--text-color); font-weight:400; letter-spacing:1px;">SONIC SYNC EDITION</span></h1>
+        
+        <div class="input-group">
+            <span class="input-label">PLAYER & TRACK</span>
+            <input type="text" id="player-name" placeholder="Name#TripKey" style="margin-bottom: 10px;">
+            <div style="display:flex; gap:10px;">
+                <input type="text" id="yt-url" placeholder="YouTube URL" style="flex-grow:1;">
+                <button class="btn" id="yt-load-btn" style="width:auto; margin:0; padding: 0 20px; font-size:14px;">LOAD</button>
+            </div>
+            <button class="btn" id="open-library-btn" style="background:transparent; border:1px solid var(--neon-cyan); color:var(--neon-cyan); margin-top:10px; font-size:12px; padding:10px;">📂 LIBRARY</button>
+            <div id="yt-status" style="font-size: 11px; color: var(--neon-pink); margin-top: 5px; height: 16px;"></div>
+        </div>
+
+        <div class="input-group">
+            <span class="input-label">ANALYSIS SETTINGS</span>
+            <div class="diff-selector" id="diff-selector">
+                <button class="diff-btn" data-diff="easy">EASY</button>
+                <button class="diff-btn active" data-diff="normal">NORMAL</button>
+                <button class="diff-btn" data-diff="hard">HARD</button>
+                <button class="diff-btn" data-diff="expert">EXPERT</button>
+            </div>
+            
+            <div class="bpm-container">
+                <div style="display:flex; flex-direction:column; flex-grow:1;">
+                    <span class="input-label" style="margin-bottom:4px;">BPM (Tempo)</span>
+                    <input type="number" id="bpm-input" class="bpm-display" value="120" min="60" max="240">
+                </div>
+                <button class="tap-btn" id="bpm-tap-btn">TAP<br>RHYTHM</button>
+            </div>
+            
+            <button class="mic-toggle-btn" id="mic-toggle-btn">
+                <span>🎤</span> 音声同期(マイク)を有効にする
+            </button>
+            <div style="font-size: 10px; opacity: 0.6; margin-top: 5px;">※スピーカーの音をマイクで拾って背景を連動させます</div>
+        </div>
+
+        <div id="preview-box">
+            <div id="preview-placeholder">LOAD VIDEO TO PREVIEW</div>
+            <div id="preview-content"></div>
+        </div>
+
+        <div id="menu-ranking-container" class="ranking-container hidden">
+            <h3 style="font-size: 14px; margin: 0 0 10px 0; color: var(--neon-lime);">TOP RANKERS</h3>
+            <div id="menu-ranking-list"></div>
+        </div>
+
+        <button class="btn" id="start-btn" disabled>GAME START</button>
+    </div>
+
+    <!-- リザルト画面 -->
+    <div id="result-screen" class="overlay-screen hidden">
+        <h2 style="color: var(--neon-cyan); margin: 30px 0 10px 0; font-size: 32px;">CLEAR!</h2>
+        <div style="font-size: 54px; font-weight: 900; margin-bottom: 20px;" id="final-score">0</div>
+        <div id="stats-detail" style="text-align: center; font-size: 14px; margin-bottom: 30px; line-height: 1.6;"></div>
+        
+        <div class="input-group">
+            <input type="text" id="player-comment" placeholder="Comment..." maxlength="30">
+            <button class="btn" id="register-score-btn" style="margin-top:10px; font-size:14px;">REGISTER SCORE</button>
+        </div>
+        <button class="btn" id="retry-btn">BACK TO MENU</button>
+    </div>
+
+    <!-- ライブラリ画面 -->
+    <div id="library-modal" class="modal">
+        <div class="modal-content" style="width: 100%; max-width: 450px; display: flex; flex-direction: column; height: 100%;">
+            <h2 style="text-align: center; color: var(--neon-cyan);">LIBRARY</h2>
+            <div class="library-tabs" id="library-tabs" style="display:flex; gap:10px; margin-bottom:15px; overflow-x:auto;">
+                <button class="tab-btn active" data-mode="new" style="border:none; background:transparent; color:var(--text-color); font-weight:bold; cursor:pointer;">NEW</button>
+                <button class="tab-btn" data-mode="daily" style="border:none; background:transparent; color:var(--text-color); opacity:0.5; font-weight:bold; cursor:pointer;">HOT</button>
+            </div>
+            <div id="shared-list-full" style="flex-grow: 1; overflow-y: auto;"></div>
+            <button class="btn" id="close-library-btn" style="background: #333; margin-top: 20px;">CLOSE</button>
+        </div>
+    </div>
+
+    <div id="touch-controls">
+        <div class="touch-btn" id="btn-0" data-key="ArrowLeft">←</div>
+        <div class="touch-btn" id="btn-1" data-key="ArrowDown">↓</div>
+        <div class="touch-btn" id="btn-2" data-key="ArrowUp">↑</div>
+        <div class="touch-btn" id="btn-3" data-key="ArrowRight">→</div>
+    </div>
+</div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, collection, addDoc, getDocs, updateDoc, doc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    const firebaseConfig = (typeof window.__firebase_config !== 'undefined' && window.__firebase_config) 
+        ? JSON.parse(window.__firebase_config) 
+        : { apiKey: "API_KEY", projectId: "PROJECT_ID" }; // Placeholder fallback
+    
+    const targetAppId = (typeof window.__app_id !== 'undefined' && window.__app_id) ? window.__app_id : 'neon-hero-v5-sonic';
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+    let currentUser = null;
+
+    signInAnonymously(auth).catch(console.error);
+    onAuthStateChanged(auth, u => currentUser = u);
+
+    window.saveScore = async (data) => {
+        if (!currentUser) return;
+        try { await addDoc(collection(db, 'artifacts', targetAppId, 'public', 'data', 'scores'), { ...data, userId: currentUser.uid, timestamp: Date.now() }); } catch(e){}
+    };
+    window.getRankings = async (vid, diff) => {
+        if (!currentUser) return [];
+        try {
+            const sn = await getDocs(collection(db, 'artifacts', targetAppId, 'public', 'data', 'scores'));
+            let l = []; sn.forEach(d => { const v = d.data(); if(v.videoId===vid && v.difficulty===diff) l.push(v); });
+            return l.sort((a,b)=>b.score-a.score).slice(0,10);
+        } catch(e){return[];}
+    };
+    window.addVideo = async (vid, title, dur) => {
+        if (!currentUser) return;
+        try {
+            const c = collection(db, 'artifacts', targetAppId, 'public', 'data', 'shared_videos');
+            const sn = await getDocs(c);
+            let exist = null; sn.forEach(d => { if(d.data().videoId === vid) exist = d.id; });
+            if(!exist) await addDoc(c, { videoId: vid, title, duration: dur, timestamp: Date.now() });
+        } catch(e){}
+    };
+    window.getVideos = async () => {
+        if (!currentUser) return [];
+        try { const sn = await getDocs(collection(db, 'artifacts', targetAppId, 'public', 'data', 'shared_videos')); const l=[]; sn.forEach(d=>l.push(d.data())); return l.sort((a,b)=>b.timestamp-a.timestamp); } catch(e){return[];}
+    };
+</script>
+
+<script src="https://www.youtube.com/iframe_api"></script>
+<script>
+/* --- Seeded Random for Deterministic Map Generation --- */
+class SeededRandom {
+    constructor(seedStr) { this.seed = this.cyrb128(seedStr); }
+    cyrb128(str) {
+        let h1 = 1779033703, h2 = 3144134277, h3 = 1013904242, h4 = 2773480762;
+        for (let i = 0, k; i < str.length; i++) {
+            k = str.charCodeAt(i);
+            h1 = h2 ^ Math.imul(h1 ^ k, 597399067); h2 = h3 ^ Math.imul(h2 ^ k, 2869860233);
+            h3 = h4 ^ Math.imul(h3 ^ k, 951274213); h4 = h1 ^ Math.imul(h4 ^ k, 2716044179);
+        }
+        h1 = Math.imul(h3 ^ (h1 >>> 18), 597399067); h2 = Math.imul(h4 ^ (h2 >>> 22), 2869860233);
+        h3 = Math.imul(h1 ^ (h3 >>> 17), 951274213); h4 = Math.imul(h2 ^ (h4 >>> 19), 2716044179);
+        return [h1>>>0, h2>>>0, h3>>>0, h4>>>0];
+    }
+    random() {
+        let a = this.seed[0], b = this.seed[1], c = this.seed[2], d = this.seed[3];
+        let t = (a + b) | 0; a = b ^ b >>> 9; b = c + (c << 3) | 0; c = (c << 21) | (c >>> 11); d = (d + 1) | 0; t = (t + d) | 0; c = (c + t) | 0;
+        this.seed = [a,b,c,d]; return (t >>> 0) / 4294967296;
+    }
+}
+
+/* --- Game Logic --- */
+const LANE_COUNT = 4;
+const JUDGMENT_MS = { PERFECT: 60, GREAT: 110, GOOD: 160, MISS: 250 };
+const CORE_COLORS = ['#00f2ff', '#ff007a', '#bcff00', '#9d00ff'];
+const DIFF_CONFIG = {
+    easy:   { speed: 0.45, density: 0.3, grid: 1 },
+    normal: { speed: 0.60, density: 0.5, grid: 2 },
+    hard:   { speed: 0.75, density: 0.7, grid: 4 },
+    expert: { speed: 0.95, density: 0.9, grid: 4 }
+};
+
+let gameState = 'START';
+let score=0, combo=0, maxCombo=0, stats={perfect:0, great:0, good:0, miss:0};
+let notes=[], particles=[];
+let currentVideoId="", currentDuration=0, ytPlayer;
+let currentDiff='normal', currentBpm=120;
+let activeLanes=[false,false,false,false];
+
+/* --- Audio Analysis (Mic) --- */
+let audioCtx, analyser, dataArray, micStream;
+let isMicEnabled = false;
+
+const micToggleBtn = document.getElementById('mic-toggle-btn');
+micToggleBtn.addEventListener('click', async () => {
+    if(!isMicEnabled) {
+        try {
+            micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            analyser = audioCtx.createAnalyser();
+            const source = audioCtx.createMediaStreamSource(micStream);
+            source.connect(analyser);
+            analyser.fftSize = 64;
+            dataArray = new Uint8Array(analyser.frequencyBinCount);
+            isMicEnabled = true;
+            micToggleBtn.classList.add('active');
+            micToggleBtn.innerHTML = "<span>🎤</span> 音声同期ON (Listening...)";
+            showToast("マイク同期を有効にしました。スピーカーの音を拾います。");
+        } catch(e) {
+            alert("マイクへのアクセスが拒否されました。設定を確認してください。");
+        }
+    } else {
+        if(micStream) micStream.getTracks().forEach(t=>t.stop());
+        if(audioCtx) audioCtx.close();
+        isMicEnabled = false;
+        micToggleBtn.classList.remove('active');
+        micToggleBtn.innerHTML = "<span>🎤</span> 音声同期(マイク)を有効にする";
+    }
+});
+
+/* --- BPM Tap --- */
+let tapTimes = [];
+const bpmInput = document.getElementById('bpm-input');
+document.getElementById('bpm-tap-btn').addEventListener('click', () => {
+    const now = Date.now();
+    if (tapTimes.length > 0 && now - tapTimes[tapTimes.length-1] > 2000) tapTimes = [];
+    tapTimes.push(now);
+    if(tapTimes.length > 5) tapTimes.shift();
+    if(tapTimes.length >= 2) {
+        let ints = [];
+        for(let i=1; i<tapTimes.length; i++) ints.push(tapTimes[i]-tapTimes[i-1]);
+        const avg = ints.reduce((a,b)=>a+b)/ints.length;
+        currentBpm = Math.round(60000/avg);
+        currentBpm = Math.max(40, Math.min(300, currentBpm));
+        bpmInput.value = currentBpm;
+        if(currentDuration > 0) notes = generateMap(currentDuration);
+    }
+});
+bpmInput.addEventListener('change', (e) => {
+    let v = parseInt(e.target.value);
+    currentBpm = Math.max(40, Math.min(300, v));
+    if(currentDuration > 0) notes = generateMap(currentDuration);
+});
+
+/* --- Map Generation (Structured) --- */
+function generateMap(duration) {
+    const map = [];
+    const cfg = DIFF_CONFIG[currentDiff];
+    const rng = new SeededRandom(currentVideoId || "seed");
+    const beatMs = 60000 / currentBpm;
+    const totalMs = duration * 1000;
+    
+    // 曲の展開をシミュレート (Intro -> A -> B -> Chorus...)
+    let t = 2000; // start delay
+    let sectionTime = 0;
+    
+    while(t < totalMs - 3000) {
+        // セクション決定 (16~32小節)
+        const secBeats = (16 + Math.floor(rng.random()*16)) * 4;
+        const secDur = secBeats * beatMs;
+        const intensity = rng.random(); // 0.0 ~ 1.0 (静か ~ 激しい)
+        
+        const secEnd = Math.min(t + secDur, totalMs - 3000);
+        const effectiveDensity = cfg.density * (0.5 + intensity * 0.5); // 難易度と展開で密度変化
+        
+        while(t < secEnd) {
+            // グリッド進行
+            const division = (intensity > 0.7 && cfg.grid >= 2) ? 2 : 1; // 盛り上がりで倍速配置
+            const step = beatMs / division;
+            
+            if(rng.random() < effectiveDensity) {
+                // ノート生成
+                const lane = Math.floor(rng.random() * LANE_COUNT);
+                map.push({ time: t, lane: lane, hit: false });
+                
+                // 同時押し (Hard以上)
+                if(currentDiff !== 'easy' && rng.random() < (intensity * 0.3)) {
+                    const lane2 = (lane + 1 + Math.floor(rng.random() * 2)) % LANE_COUNT;
+                    map.push({ time: t, lane: lane2, hit: false });
+                }
+            }
+            t += step;
+        }
+    }
+    return map.sort((a,b)=>a.time-b.time);
+}
+
+/* --- Rendering --- */
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const vCanvas = document.getElementById('visualizerCanvas');
+const vCtx = vCanvas.getContext('2d');
+const gameContainer = document.getElementById('game-container');
+
+function resize() {
+    canvas.width = gameContainer.clientWidth;
+    canvas.height = gameContainer.clientHeight;
+    vCanvas.width = canvas.width;
+    vCanvas.height = canvas.height;
+}
+window.addEventListener('resize', resize);
+resize();
+
+function draw() {
+    const now = (ytPlayer && ytPlayer.getCurrentTime) ? ytPlayer.getCurrentTime() * 1000 : 0;
+    const isLight = document.body.classList.contains('light-mode');
+    
+    // 1. Visualizer Draw
+    vCtx.clearRect(0, 0, vCanvas.width, vCanvas.height);
+    let bassKick = 0;
+    
+    if (isMicEnabled && analyser) {
+        analyser.getByteFrequencyData(dataArray);
+        const bars = 10;
+        const step = Math.floor(dataArray.length / bars);
+        const w = vCanvas.width / bars;
+        
+        bassKick = dataArray[1] / 255; // 低音成分
+        
+        for(let i=0; i<bars; i++) {
+            const val = dataArray[i * step];
+            const h = (val / 255) * vCanvas.height * 0.4;
+            vCtx.fillStyle = isLight ? `rgba(0,0,0,0.05)` : `rgba(255,255,255,0.05)`;
+            vCtx.fillRect(i * w, vCanvas.height - h, w - 2, h);
+            
+            // ピークフラッシュ
+            if (val > 200) {
+                vCtx.fillStyle = CORE_COLORS[i % 4];
+                vCtx.globalAlpha = 0.1;
+                vCtx.fillRect(i * w, 0, w, vCanvas.height);
+                vCtx.globalAlpha = 1.0;
+            }
+        }
+    } else {
+        // 擬似ビジュアライザー (BPM同期)
+        const beatProg = (Date.now() % (60000/currentBpm)) / (60000/currentBpm);
+        if (beatProg < 0.1) bassKick = 0.5;
+    }
+    
+    // 背景の明滅 (Bass Kick連動)
+    if (bassKick > 0.4) {
+        gameContainer.style.boxShadow = `0 0 ${30 + bassKick * 50}px var(--neon-purple)`;
+    } else {
+        gameContainer.style.boxShadow = `0 30px 60px var(--shadow-color)`;
+    }
+
+    // 2. Game Draw
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    if(gameState !== 'PLAYING') {
+        requestAnimationFrame(draw);
+        return;
+    }
+    
+    const laneW = canvas.width / LANE_COUNT;
+    const hitY = canvas.height * 0.82;
+    const cfg = DIFF_CONFIG[currentDiff];
+    
+    // Lanes
+    for(let i=0; i<LANE_COUNT; i++) {
+        ctx.fillStyle = activeLanes[i] ? (isLight?'rgba(0,0,0,0.1)':'rgba(255,255,255,0.1)') : 'transparent';
+        ctx.fillRect(i*laneW, 0, laneW, canvas.height);
+        ctx.strokeStyle = activeLanes[i] ? CORE_COLORS[i] : 'rgba(128,128,128,0.2)';
+        ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(i*laneW+10, hitY); ctx.lineTo((i+1)*laneW-10, hitY); ctx.stroke();
+    }
+    
+    // Notes
+    notes.forEach(n => {
+        if(n.hit) return;
+        const diff = n.time - now;
+        const y = hitY - (diff * cfg.speed);
+        
+        if(y > -50 && y < canvas.height + 50) {
+            ctx.save();
+            ctx.translate((n.lane + 0.5) * laneW, y);
+            // 矢印描画
+            ctx.rotate([-Math.PI/2, Math.PI, 0, Math.PI/2][n.lane]);
+            ctx.fillStyle = CORE_COLORS[n.lane];
+            ctx.shadowBlur = 10; ctx.shadowColor = CORE_COLORS[n.lane];
+            const sz = laneW * 0.5;
+            ctx.beginPath(); ctx.moveTo(0, -sz/2); ctx.lineTo(sz/2, 0); ctx.lineTo(-sz/2, sz/2); ctx.lineTo(-sz/2, -sz/2); ctx.fill();
+            ctx.restore();
+        }
+        
+        // Miss判定
+        if(diff < -JUDGMENT_MS.MISS && !n.hit) {
+            n.hit = true; combo = 0; stats.miss++;
+            updateJudge("MISS", "#888");
+        }
+    });
+    
+    // Particles
+    particles = particles.filter(p => p.l > 0);
+    particles.forEach(p => {
+        ctx.globalAlpha = p.l; ctx.fillStyle = p.c;
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.s * p.l, 0, Math.PI*2); ctx.fill();
+        p.x+=p.vx; p.y+=p.vy; p.l-=0.05;
+    });
+    ctx.globalAlpha = 1.0;
+
+    // Intro skip check
+    const firstNote = notes.find(n => !n.hit);
+    if(firstNote && firstNote.time - now > 5000) {
+        document.getElementById('skip-intro-btn').style.display = 'block';
+    } else {
+        document.getElementById('skip-intro-btn').style.display = 'none';
+    }
+
+    if(ytPlayer && ytPlayer.getPlayerState() === YT.PlayerState.ENDED) endGame();
+    else requestAnimationFrame(draw);
+}
+
+function updateJudge(text, color) {
+    const el = document.getElementById('judgment-text');
+    el.innerText = text; el.style.color = color;
+    el.style.transform = "scale(1.5)"; setTimeout(()=>el.style.transform="scale(1)", 100);
+    const cb = document.getElementById('combo-text');
+    cb.innerText = combo; cb.style.opacity = combo > 2 ? 1 : 0;
+    document.getElementById('score-val').innerText = score.toString().padStart(6, '0');
+}
+
+/* --- Controls & Setup --- */
+function checkHit(lane) {
+    if(gameState !== 'PLAYING') return;
+    const now = (ytPlayer && ytPlayer.getCurrentTime) ? ytPlayer.getCurrentTime() * 1000 : 0;
+    const note = notes.find(n => n.lane === lane && !n.hit && Math.abs(n.time - now) < JUDGMENT_MS.MISS);
+    
+    if(note) {
+        const diff = Math.abs(note.time - now);
+        note.hit = true;
+        let pts=0, txt="", col="";
+        if(diff < JUDGMENT_MS.PERFECT) { pts=1000; txt="PERFECT"; col="#0ff"; stats.perfect++; }
+        else if(diff < JUDGMENT_MS.GREAT) { pts=700; txt="GREAT"; col="#f0f"; stats.great++; }
+        else { pts=400; txt="GOOD"; col="#ff0"; stats.good++; }
+        
+        score += pts; combo++; maxCombo = Math.max(maxCombo, combo);
+        updateJudge(txt, col);
+        
+        // Explosion
+        for(let i=0; i<10; i++) particles.push({
+            x: (lane+0.5)*(canvas.width/LANE_COUNT), y: canvas.height*0.82,
+            vx:(Math.random()-0.5)*10, vy:(Math.random()-0.5)*10, l:1, s:5, c: CORE_COLORS[lane]
+        });
+    }
+}
+
+const keys = ['arrowleft','arrowdown','arrowup','arrowright'];
+window.addEventListener('keydown', e => {
+    const i = keys.indexOf(e.key.toLowerCase());
+    if(i>=0 && !activeLanes[i]) { activeLanes[i]=true; document.getElementById('btn-'+i).classList.add('active'); checkHit(i); }
+});
+window.addEventListener('keyup', e => {
+    const i = keys.indexOf(e.key.toLowerCase());
+    if(i>=0) { activeLanes[i]=false; document.getElementById('btn-'+i).classList.remove('active'); }
+});
+
+/* --- UI Logic --- */
+document.getElementById('start-btn').addEventListener('click', () => {
+    document.getElementById('start-screen').classList.add('hidden');
+    document.getElementById('game-container').classList.add('is-playing');
+    gameState = 'PLAYING';
+    notes = generateMap(currentDuration);
+    score=0; combo=0; maxCombo=0; stats={perfect:0, great:0, good:0, miss:0};
+    ytPlayer.seekTo(0); ytPlayer.playVideo();
+    requestAnimationFrame(draw);
+});
+
+document.getElementById('yt-load-btn').addEventListener('click', () => {
+    const url = document.getElementById('yt-url').value;
+    const vid = url.match(/v=([^&]+)/)?.[1] || url.match(/youtu\.be\/([^?]+)/)?.[1];
+    if(vid) loadVideo(vid);
+});
+
+function loadVideo(vid) {
+    currentVideoId = vid;
+    document.getElementById('preview-content').innerHTML = '<div id="yt-placeholder"></div>';
+    ytPlayer = new YT.Player('yt-placeholder', {
+        videoId: vid, width: '100%', height: '100%',
+        playerVars: { autoplay: 1, controls: 0, disablekb: 1 },
+        events: {
+            onReady: e => {
+                currentDuration = e.target.getDuration();
+                document.getElementById('start-btn').disabled = false;
+                notes = generateMap(currentDuration);
+                updateRankingUI();
+                window.addVideo(vid, ytPlayer.getVideoData().title, currentDuration);
+            }
+        }
+    });
+}
+
+function endGame() {
+    gameState = 'FINISHED';
+    document.getElementById('result-screen').classList.remove('hidden');
+    document.getElementById('final-score').innerText = score;
+    document.getElementById('stats-detail').innerHTML = `PERFECT: ${stats.perfect} <br> MAX COMBO: ${maxCombo}`;
+    window.getRankings(currentVideoId, currentDiff).then(renderResultRanking);
+}
+
+document.getElementById('retry-btn').addEventListener('click', () => location.reload());
+document.getElementById('skip-intro-btn').addEventListener('click', () => {
+    const n = notes.find(n => !n.hit);
+    if(n) ytPlayer.seekTo(n.time/1000 - 2, true);
+});
+
+document.getElementById('diff-selector').addEventListener('click', e => {
+    if(e.target.dataset.diff) {
+        document.querySelectorAll('.diff-btn').forEach(b=>b.classList.remove('active'));
+        e.target.classList.add('active');
+        currentDiff = e.target.dataset.diff;
+        if(currentDuration) notes = generateMap(currentDuration);
+    }
+});
+
+/* --- Ranking & Lib --- */
+async function updateRankingUI() {
+    const list = document.getElementById('menu-ranking-list');
+    const data = await window.getRankings(currentVideoId, currentDiff);
+    list.innerHTML = data.map((d,i)=>`<div class="ranking-item"><span class="ranking-rank">${i+1}</span><span class="ranking-name">${d.playerName}</span><span class="ranking-score">${d.score}</span></div>`).join('');
+}
+function renderResultRanking(data) { /* Similar logic for result screen */ }
+
+document.getElementById('open-library-btn').addEventListener('click', async () => {
+    document.getElementById('library-modal').classList.add('is-visible');
+    const vids = await window.getVideos();
+    document.getElementById('shared-list-full').innerHTML = vids.map(v => 
+        `<div class="shared-item-full" onclick="document.getElementById('yt-url').value='https://youtu.be/${v.videoId}'; document.getElementById('yt-load-btn').click(); document.getElementById('library-modal').classList.remove('is-visible')">
+            <div class="thumbnail-container"><img src="https://img.youtube.com/vi/${v.videoId}/mqdefault.jpg" class="shared-thumbnail"></div>
+            <div><div style="font-weight:900; font-size:13px;">${v.title}</div><div style="font-size:10px; opacity:0.6;">${Math.floor(v.duration/60)}:${(v.duration%60).toString().padStart(2,'0')}</div></div>
+        </div>`
+    ).join('');
+});
+document.getElementById('close-library-btn').addEventListener('click', ()=>document.getElementById('library-modal').classList.remove('is-visible'));
+
+function showToast(msg) {
+    const t = document.createElement('div'); t.className='toast'; t.innerText=msg;
+    document.body.appendChild(t); setTimeout(()=>t.remove(), 3000);
+}
+</script>
+</body>
+</html>
