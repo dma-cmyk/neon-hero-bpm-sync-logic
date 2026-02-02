@@ -3,11 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ネオン・ヒーロー - ソニック・シンクロ</title>
+    <title>ネオン・ヒーロー - プリズム・エディション</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Exo+2:wght@300;600;900&family=Noto+Sans+JP:wght@400;700;900&display=swap');
 
         :root {
+            /* ダークモード: ディープ・スペース・ネオン */
             --bg-color: #03030b;
             --container-bg: radial-gradient(circle at top, #101030 0%, #03030b 100%);
             --overlay-bg: rgba(5, 5, 20, 0.85);
@@ -23,9 +24,10 @@
             --grid-color: rgba(0, 242, 255, 0.15);
             --shadow-color: rgba(0, 0, 0, 0.8);
             --shine-gradient: linear-gradient(120deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+            --scroll-thumb: linear-gradient(to bottom, var(--neon-cyan), var(--neon-purple));
         }
 
-        /* ライトモード */
+        /* ライトモード: オパール・プリズム */
         body.light-mode {
             --bg-color: #f0f4f8;
             --container-bg: linear-gradient(135deg, #eef2ff 0%, #fdeff9 50%, #e0f2fe 100%);
@@ -34,8 +36,29 @@
             --input-bg: rgba(255, 255, 255, 0.9);
             --panel-bg: rgba(255, 255, 255, 0.5);
             --panel-border: rgba(66, 153, 225, 0.3);
+            
+            --neon-cyan: #0ea5e9;
+            --neon-pink: #ec4899;
+            --neon-lime: #65a30d;
+            --neon-purple: #9333ea;
             --grid-color: rgba(66, 153, 225, 0.1);
+            --shadow-color: rgba(100, 116, 139, 0.2);
+            --shine-gradient: linear-gradient(120deg, transparent, rgba(255, 255, 255, 0.6), transparent);
+            --scroll-thumb: linear-gradient(to bottom, #7dd3fc, #f9a8d4, #c084fc);
         }
+
+        /* スクロールバーのデザイン */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb {
+            background: var(--scroll-thumb);
+            border-radius: 10px;
+            border: 2px solid transparent;
+            background-clip: content-box;
+            box-shadow: 0 0 12px var(--neon-cyan);
+            transition: 0.3s;
+        }
+        ::-webkit-scrollbar-thumb:hover { box-shadow: 0 0 20px var(--neon-pink); background: var(--neon-pink); }
 
         body {
             margin: 0; padding: 0;
@@ -52,18 +75,13 @@
             background: var(--container-bg);
             box-shadow: 0 30px 60px var(--shadow-color);
             overflow: hidden; display: flex; flex-direction: column; border-radius: 20px;
-        }
-
-        /* ビジュアライザー用キャンバス（背景） */
-        #visualizerCanvas {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            z-index: 1; pointer-events: none; opacity: 0.5;
+            transition: transform 0.1s; /* 画面揺れ用 */
         }
 
         .grid-bg {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background-image: linear-gradient(var(--grid-color) 1px, transparent 1px), linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
-            background-size: 50px 50px; z-index: 2;
+            background-size: 50px 50px; z-index: 1;
         }
 
         .grid-bg-inner {
@@ -71,192 +89,302 @@
             transform: rotateX(60deg) translateY(-25%);
             animation: grid-scroll 15s linear infinite;
         }
+
         @keyframes grid-scroll { from { background-position: 0 0; } to { background-position: 0 500px; } }
 
         #media-bg-container {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            z-index: 3; pointer-events: auto; opacity: 0; transition: opacity 0.8s ease; overflow: hidden;
+            z-index: 2; pointer-events: auto; opacity: 0; transition: opacity 0.8s ease; overflow: hidden;
         }
+
         #game-container.is-playing #media-bg-container { opacity: 0.6; }
 
-        /* ゲームメインキャンバス */
-        #gameCanvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; background: transparent; pointer-events: none; }
+        canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 5; background: transparent; pointer-events: none; }
 
-        #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; display: flex; flex-direction: column; align-items: center; z-index: 20; }
-
-        /* UI Elements */
         #theme-toggle {
             position: absolute; top: 15px; right: 15px; z-index: 150;
             background: var(--panel-bg); border: 1.5px solid var(--neon-cyan); color: var(--text-color);
             border-radius: 14px; cursor: pointer; width: 44px; height: 44px;
             display: flex; align-items: center; justify-content: center;
             backdrop-filter: blur(10px); box-shadow: 0 8px 15px var(--shadow-color);
-            transition: all 0.3s; font-size: 22px;
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); font-size: 22px;
         }
+        #theme-toggle:hover { transform: rotate(15deg) scale(1.1); box-shadow: 0 0 20px var(--neon-cyan); }
 
         #skip-intro-btn {
             position: absolute; top: 70px; right: 15px; z-index: 150;
             background: var(--panel-bg); border: 1.5px solid var(--neon-lime); color: var(--text-color);
             padding: 8px 15px; border-radius: 12px; cursor: pointer;
             backdrop-filter: blur(10px); box-shadow: 0 4px 12px var(--shadow-color);
-            font-size: 11px; font-weight: 900; letter-spacing: 1px; display: none;
+            font-size: 11px; font-weight: 900; letter-spacing: 1px; display: none; transition: all 0.2s ease;
         }
+        #skip-intro-btn:hover { background: var(--neon-lime); color: #000; box-shadow: 0 0 15px var(--neon-lime); }
+
+        #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; display: flex; flex-direction: column; align-items: center; z-index: 10; }
 
         .score-display { margin-top: 40px; font-size: 32px; font-weight: 900; color: var(--neon-cyan); text-shadow: 0 0 15px var(--neon-cyan); letter-spacing: 2px; }
+
         .combo-display { position: absolute; top: 32%; font-size: 72px; font-weight: 900; color: var(--neon-pink); text-shadow: 0 0 30px var(--neon-pink); opacity: 0; }
+
         .judgment-display { position: absolute; top: 50%; font-size: 44px; font-weight: 900; text-transform: uppercase; font-style: italic; letter-spacing: 4px; }
 
-        /* Screens */
+        /* Visualizer Display */
+        #visualizer-canvas { position: absolute; bottom: 0; left: 0; width: 100%; height: 300px; z-index: 3; pointer-events: none; opacity: 0.6; mix-blend-mode: screen; }
+
         .overlay-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: var(--overlay-bg); backdrop-filter: blur(25px); z-index: 100; display: flex; flex-direction: column; align-items: center; padding: 30px; box-sizing: border-box; overflow-y: auto; animation: fadeIn 0.6s ease-out; }
 
-        /* Components */
         .btn {
-            position: relative; padding: 16px 30px; font-size: 18px; font-weight: 900; background: linear-gradient(45deg, var(--neon-pink), var(--neon-purple)); color: white; border: none; border-radius: 18px; cursor: pointer; transition: all 0.3s; width: 100%; max-width: 340px; flex-shrink: 0; margin-bottom: 20px; display: flex; align-items: center; justify-content: center; gap: 10px; box-shadow: 0 10px 25px var(--shadow-color); overflow: hidden; letter-spacing: 2px;
+            position: relative; padding: 16px 30px; font-size: 18px; font-weight: 900; background: linear-gradient(45deg, var(--neon-pink), var(--neon-purple)); color: white; border: none; border-radius: 18px; cursor: pointer; transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); width: 100%; max-width: 340px; flex-shrink: 0; margin-bottom: 20px; display: flex; align-items: center; justify-content: center; gap: 10px; box-shadow: 0 10px 25px var(--shadow-color); overflow: hidden; letter-spacing: 2px;
         }
+        .btn::after { content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%; background: var(--shine-gradient); transform: rotate(30deg); transition: 0.5s; opacity: 0; }
+        .btn:hover::after { left: 100%; opacity: 1; }
         .btn:hover:not(:disabled) { transform: translateY(-4px); box-shadow: 0 15px 35px var(--shadow-color); }
-        .btn:disabled { background: #64748b; cursor: not-allowed; opacity: 0.5; }
+        .btn:disabled { background: #64748b; cursor: not-allowed; opacity: 0.5; transform: none; box-shadow: none; }
+        
+        /* Experimental Button Style */
+        .btn.hybrid { background: linear-gradient(45deg, #0ea5e9, #2563eb); font-size: 12px; margin-top: 5px; padding: 12px; }
+        .btn.hybrid.active { background: linear-gradient(45deg, #22c55e, #16a34a); box-shadow: 0 0 15px #22c55e; }
 
         .input-group { width: 100%; max-width: 420px; background: var(--panel-bg); padding: 22px; border-radius: 24px; border: 1px solid var(--panel-border); margin-bottom: 20px; box-sizing: border-box; box-shadow: 0 10px 30px var(--shadow-color); flex-shrink: 0; }
+
         .input-label { font-size: 12px; color: var(--text-color); opacity: 0.9; margin-bottom: 10px; display: block; text-align: left; letter-spacing: 1.5px; font-weight: 900; text-transform: uppercase; }
-        input[type="text"] { width: 100%; padding: 14px; border-radius: 14px; border: 1.5px solid rgba(128,128,128,0.2); background: var(--input-bg); color: var(--text-color); box-sizing: border-box; text-align: center; font-size: 15px; outline: none; transition: 0.3s; font-weight: 700; }
-        input[type="text"]:focus { border-color: var(--neon-cyan); box-shadow: 0 0 15px var(--neon-cyan); }
 
-        /* Diff & BPM */
-        .diff-selector { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; width: 100%; margin-bottom: 15px; }
+        input[type="text"], input[type="number"] { width: 100%; padding: 14px; border-radius: 14px; border: 1.5px solid rgba(128,128,128,0.2); background: var(--input-bg); color: var(--text-color); box-sizing: border-box; text-align: center; font-size: 15px; outline: none; transition: all 0.3s; font-weight: 700; }
+        input[type="text"]:focus, input[type="number"]:focus { border-color: var(--neon-cyan); box-shadow: 0 0 15px var(--neon-cyan); }
+
+        .diff-selector { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; width: 100%; }
+
         .diff-btn {
-            padding: 14px; font-size: 14px; font-weight: 900; border-radius: 16px; border: 1.5px solid rgba(128,128,128,0.1); background: var(--input-bg); cursor: pointer; transition: all 0.2s; color: var(--text-color);
+            position: relative; padding: 16px; font-size: 14px; font-weight: 900; border-radius: 16px; border: 1.5px solid rgba(128,128,128,0.1); background: var(--input-bg); cursor: pointer; transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); display: flex; align-items: center; justify-content: center; letter-spacing: 2px; --diff-color: #94a3b8; overflow: hidden;
         }
-        .diff-btn.active { background: var(--neon-cyan); color: #fff; box-shadow: 0 0 15px var(--neon-cyan); border-color: transparent; }
-
-        .bpm-container { display: flex; align-items: center; gap: 10px; width: 100%; }
-        .bpm-display { flex-grow: 1; background: var(--input-bg); padding: 12px; border-radius: 12px; border: 1px solid var(--panel-border); text-align: center; font-family: monospace; font-size: 18px; font-weight: 700; color: var(--neon-cyan); width: 60px; }
-        .tap-btn { background: var(--panel-bg); border: 2px solid var(--neon-pink); color: var(--neon-pink); padding: 0 20px; height: 48px; border-radius: 12px; cursor: pointer; font-weight: 900; font-size: 14px; transition: 0.1s; display: flex; align-items: center; justify-content: center; }
-        .tap-btn:active { background: var(--neon-pink); color: white; transform: scale(0.95); }
-
-        .mic-toggle-btn { background: var(--panel-bg); border: 1px solid var(--neon-lime); color: var(--neon-lime); padding: 8px 12px; border-radius: 10px; cursor: pointer; font-size: 11px; font-weight: 900; margin-top: 10px; width: 100%; display: flex; align-items: center; justify-content: center; gap: 6px; transition: 0.3s; }
-        .mic-toggle-btn.active { background: var(--neon-lime); color: #000; box-shadow: 0 0 10px var(--neon-lime); }
+        .diff-btn::before { content: ''; position: absolute; top: 0; left: 0; width: 6px; height: 100%; background: var(--diff-color); }
+        .diff-btn[data-diff="easy"] { --diff-color: var(--neon-lime); color: var(--neon-lime); }
+        .diff-btn[data-diff="normal"] { --diff-color: var(--neon-cyan); color: var(--neon-cyan); }
+        .diff-btn[data-diff="hard"] { --diff-color: var(--neon-pink); color: var(--neon-pink); }
+        .diff-btn[data-diff="expert"] { --diff-color: var(--neon-purple); color: var(--neon-purple); }
+        .diff-btn:hover { background: var(--panel-bg); transform: translateY(-3px); }
+        .diff-btn.active { background: var(--diff-color); color: #ffffff !important; box-shadow: 0 10px 30px var(--diff-color); transform: scale(1.08); border-color: transparent; }
 
         #preview-box { width: 100%; max-width: 420px; aspect-ratio: 16 / 9; background: #000; border-radius: 22px; border: 4px solid var(--neon-cyan); margin-bottom: 30px; overflow: hidden; position: relative; box-shadow: 0 15px 40px var(--shadow-color); flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+        #preview-placeholder { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: #64748b; font-size: 14px; text-align: center; font-weight: 800; }
+        
+        #preview-content { width: 100%; height: 100%; position: relative; overflow: hidden; pointer-events: auto; }
         #preview-content iframe { position: absolute; top: 0; left: 0; width: 100% !important; height: 100% !important; border: none; }
 
-        .ranking-container { width: 100%; max-width: 420px; background: var(--panel-bg); border-radius: 24px; padding: 25px; margin-bottom: 30px; border: 1.5px solid var(--panel-border); }
-        .ranking-item { display: flex; padding: 10px 0; border-bottom: 1px solid rgba(128,128,128,0.15); font-size: 14px; }
-        .ranking-rank { color: var(--neon-lime); font-weight: 900; width: 30px; }
-        .ranking-name { flex-grow: 1; font-weight: 700; }
-        .ranking-score { color: var(--neon-cyan); font-weight: 900; font-family: monospace; }
+        .ranking-container { width: 100%; max-width: 420px; background: var(--panel-bg); border-radius: 24px; padding: 25px; margin-bottom: 30px; border: 1.5px solid var(--panel-border); box-sizing: border-box; box-shadow: 0 10px 30px var(--shadow-color); flex-shrink: 0; }
+        .ranking-item { display: flex; flex-direction: column; padding: 14px 0; border-bottom: 1px solid rgba(128,128,128,0.15); }
+        .ranking-item:last-child { border-bottom: none; }
+        .ranking-header { display: flex; align-items: center; gap: 15px; }
+        .ranking-rank { color: var(--neon-lime); font-weight: 900; width: 35px; font-size: 20px; }
+        .ranking-name { flex-grow: 1; color: var(--text-color); font-size: 16px; font-weight: 900; display: flex; align-items: center; gap: 8px; overflow: hidden; }
+        .ranking-trip { color: var(--neon-pink); font-size: 12px; font-family: monospace; opacity: 0.8; }
+        .ranking-score { color: var(--neon-cyan); font-family: 'Exo 2', sans-serif; font-size: 20px; font-weight: 900; }
+        .ranking-comment { margin-top: 8px; padding-left: 50px; color: var(--text-color); opacity: 0.7; font-size: 13px; font-style: italic; line-height: 1.5; word-break: break-all; }
 
-        /* Modal & Lists */
         .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--overlay-bg); backdrop-filter: blur(40px); z-index: 200; display: none; flex-direction: column; align-items: center; padding: 50px 25px; box-sizing: border-box; }
         .modal.is-visible { display: flex; animation: fadeIn 0.4s ease; }
-        
-        .shared-item-full { background: var(--input-bg); border: 1px solid var(--panel-border); padding: 10px; border-radius: 14px; cursor: pointer; margin-bottom: 10px; display: flex; gap: 10px; align-items: center; }
-        .shared-item-full:hover { background: var(--panel-bg); border-color: var(--neon-cyan); }
-        .thumbnail-container { width: 80px; height: 45px; border-radius: 8px; overflow: hidden; flex-shrink: 0; background: #000; }
+
+        .shared-item-full { background: var(--input-bg); border: 1px solid var(--panel-border); padding: 12px; border-radius: 18px; cursor: pointer; transition: all 0.3s; box-shadow: 0 4px 10px var(--shadow-color); display: flex; gap: 15px; align-items: center; position: relative; }
+        .shared-item-full:hover { background: var(--panel-bg); border-color: var(--neon-cyan); transform: scale(1.03); box-shadow: 0 8px 25px var(--shadow-color); }
+
+        .thumbnail-container { position: relative; width: 120px; height: 68px; flex-shrink: 0; border-radius: 10px; overflow: hidden; background: #000; border: 1.5px solid rgba(128,128,128,0.2); }
         .shared-thumbnail { width: 100%; height: 100%; object-fit: cover; }
+        .duration-badge { position: absolute; bottom: 4px; right: 4px; background: rgba(0,0,0,0.85); color: white; padding: 1px 4px; border-radius: 4px; font-size: 10px; font-weight: 900; font-family: monospace; letter-spacing: 0.5px; }
+
+        .shared-item-info { flex-grow: 1; min-width: 0; }
+        .shared-item-title { font-size: 15px; font-weight: 800; color: var(--text-color); line-height: 1.4; word-break: break-word; }
         
-        /* Touch Controls */
-        #touch-controls { position: absolute; bottom: 0; left: 0; width: 100%; height: 160px; display: grid; grid-template-columns: repeat(4, 1fr); z-index: 30; }
-        .touch-btn { border-top: 1px solid rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: center; font-size: 30px; color: rgba(255,255,255,0.3); }
-        .touch-btn:active, .touch-btn.active { background: rgba(0, 242, 255, 0.2); color: var(--neon-cyan); box-shadow: 0 0 20px var(--neon-cyan) inset; }
+        .play-count-badge { position: absolute; top: -10px; right: 10px; background: var(--neon-purple); color: white; padding: 2px 10px; border-radius: 20px; font-size: 11px; font-weight: 900; box-shadow: 0 4px 10px rgba(0,0,0,0.5); z-index: 5; }
+
+        .library-tabs { display: flex; gap: 8px; width: 100%; max-width: 450px; margin-bottom: 15px; border-bottom: 1px solid var(--panel-border); padding-bottom: 10px; overflow-x: auto; scrollbar-width: none; flex-shrink: 0; }
+        .library-tabs::-webkit-scrollbar { display: none; }
+        .tab-btn { background: transparent; border: none; color: var(--text-color); opacity: 0.5; padding: 8px 16px; cursor: pointer; font-weight: 900; font-size: 12px; border-radius: 10px; transition: all 0.2s; white-space: nowrap; }
+        .tab-btn.active { opacity: 1; background: var(--neon-cyan); color: #000; box-shadow: 0 0 15px var(--neon-cyan); }
+
+        .key-config-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; width: 100%; margin-top: 15px; }
+        .key-bind-btn { background: var(--input-bg); border: 1px solid var(--panel-border); padding: 18px 15px; border-radius: 16px; color: var(--text-color); cursor: pointer; display: flex; flex-direction: row; align-items: center; justify-content: space-between; gap: 15px; transition: 0.3s; }
+        .key-bind-btn:hover { background: rgba(255,255,255,0.1); border-color: var(--neon-cyan); }
+        .key-bind-btn.waiting { border-color: var(--neon-pink); box-shadow: 0 0 15px var(--neon-pink); animation: pulse 1s infinite; }
+        .key-name { font-size: 18px; color: var(--neon-cyan); font-weight: 900; font-family: 'Exo 2', sans-serif; text-transform: uppercase; }
+        .lane-arrow { font-size: 28px; font-weight: 900; line-height: 1; filter: drop-shadow(0 0 8px currentColor); }
+
+        #touch-controls { position: absolute; bottom: 0; left: 0; width: 100%; height: 160px; display: grid; grid-template-columns: repeat(4, 1fr); z-index: 20; }
+        .touch-btn { background: linear-gradient(to bottom, transparent, rgba(128, 128, 128, 0.08)); border-top: 1px solid rgba(128, 128, 128, 0.15); display: flex; align-items: center; justify-content: center; font-size: 38px; color: rgba(128, 128, 128, 0.4); user-select: none; transition: all 0.15s; pointer-events: auto; }
+        .touch-btn.active { background: rgba(0, 242, 255, 0.15); color: var(--neon-cyan); border-top: 5px solid var(--neon-cyan); text-shadow: 0 0 20px var(--neon-cyan); }
+
+        /* BPM Control - Improved visibility */
+        .bpm-control { display: flex; align-items: center; gap: 10px; width: 100%; }
+        #bpm-input { flex: 1; font-size: 18px; background: rgba(0,0,0,0.3); border-color: var(--neon-lime); color: var(--neon-lime); }
+        #tap-bpm-btn { flex: 1; background: var(--neon-lime); color: black; border: none; font-size: 14px; font-weight: 900; border-radius: 12px; cursor: pointer; transition: 0.1s; position: relative; overflow: hidden; box-shadow: 0 0 10px var(--neon-lime); }
+        #tap-bpm-btn:active { transform: scale(0.95); opacity: 0.8; }
+        .bpm-display { font-size: 11px; color: var(--text-color); opacity: 0.8; text-align: center; margin-top: 8px; font-weight: 700; }
 
         .hidden { display: none !important; }
-        .loader { border: 3px solid rgba(128,128,128,0.2); border-top: 3px solid var(--neon-cyan); border-radius: 50%; width: 20px; height: 20px; animation: spin 1s linear infinite; margin: 0 auto; }
+        .loader { border: 4px solid rgba(128,128,128,0.2); border-top: 4px solid var(--neon-cyan); border-radius: 50%; width: 28px; height: 28px; animation: spin 1s linear infinite; margin: 0 auto; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes spin { 100% { transform: rotate(360deg); } }
-        .toast { position: fixed; top: 30px; background: var(--neon-purple); color: white; padding: 10px 24px; border-radius: 50px; z-index: 300; font-weight: 700; box-shadow: 0 10px 30px rgba(0,0,0,0.5); font-size: 14px; }
+        .toast { position: fixed; top: 30px; background: var(--neon-purple); color: white; padding: 16px 32px; border-radius: 50px; z-index: 300; font-weight: 900; box-shadow: 0 15px 35px var(--shadow-color); border: 2px solid rgba(255,255,255,0.2); }
+        
+        .shake-effect { animation: shake 0.2s cubic-bezier(.36,.07,.19,.97) both; }
+        @keyframes shake { 10%, 90% { transform: translate3d(-2px, 0, 0); } 20%, 80% { transform: translate3d(3px, 0, 0); } 30%, 50%, 70% { transform: translate3d(-5px, 0, 0); } 40%, 60% { transform: translate3d(5px, 0, 0); } }
     </style>
 </head>
 <body class="is-menu">
 
 <div id="game-container">
-    <canvas id="visualizerCanvas"></canvas>
     <div class="grid-bg"><div class="grid-bg-inner"></div></div>
     <div id="media-bg-container"></div>
+    <canvas id="visualizer-canvas"></canvas>
     <canvas id="gameCanvas"></canvas>
     
-    <button id="theme-toggle">🌙</button>
-    <button id="skip-intro-btn">SKIP INTRO</button>
+    <button id="theme-toggle" title="Switch Theme">🌙</button>
+    <button id="skip-intro-btn" data-i18n="btn_skip_intro">イントロをスキップ</button>
 
     <div id="ui-layer">
-        <div class="score-display">SCORE: <span id="score-val">000000</span></div>
+        <div class="score-display"><span data-i18n="score_label">スコア</span>: <span id="score-val">000000</span></div>
         <div id="combo-text" class="combo-display">0</div>
         <div id="judgment-text" class="judgment-display"></div>
     </div>
 
     <!-- スタート画面 -->
     <div id="start-screen" class="overlay-screen">
-        <h1 style="font-size: 32px; margin: 20px 0; color: var(--neon-cyan); text-shadow: 0 0 20px var(--neon-cyan); font-weight: 900; letter-spacing: 3px;">NEON HERO<br><span style="font-size:14px; color:var(--text-color); font-weight:400; letter-spacing:1px;">SONIC SYNC EDITION</span></h1>
+        <h1 style="font-size: 38px; margin: 15px 0 30px 0; background: linear-gradient(to bottom, var(--text-color), var(--neon-cyan)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; filter: drop-shadow(0 4px 10px var(--shadow-color)); text-align: center; font-weight: 900; letter-spacing: 4px; flex-shrink: 0;">NEON HERO</h1>
         
         <div class="input-group">
-            <span class="input-label">PLAYER & TRACK</span>
-            <input type="text" id="player-name" placeholder="Name#TripKey" style="margin-bottom: 10px;">
-            <div style="display:flex; gap:10px;">
-                <input type="text" id="yt-url" placeholder="YouTube URL" style="flex-grow:1;">
-                <button class="btn" id="yt-load-btn" style="width:auto; margin:0; padding: 0 20px; font-size:14px;">LOAD</button>
-            </div>
-            <button class="btn" id="open-library-btn" style="background:transparent; border:1px solid var(--neon-cyan); color:var(--neon-cyan); margin-top:10px; font-size:12px; padding:10px;">📂 LIBRARY</button>
-            <div id="yt-status" style="font-size: 11px; color: var(--neon-pink); margin-top: 5px; height: 16px;"></div>
+            <span class="input-label" data-i18n="label_player_info">プレイヤー登録</span>
+            <input type="text" id="player-name" data-i18n-placeholder="placeholder_name" maxlength="30">
         </div>
 
         <div class="input-group">
-            <span class="input-label">ANALYSIS SETTINGS</span>
+            <span class="input-label" data-i18n="label_select_track">動画トラック (YOUTUBE)</span>
+            <input type="text" id="yt-url" data-i18n-placeholder="placeholder_url">
+            <div style="display: flex; gap: 12px; margin-top: 15px;">
+                <button class="btn" id="yt-load-btn" style="background: var(--input-bg); color: var(--text-color); border: 2px solid var(--neon-cyan); margin: 0; flex: 1; font-size: 15px; border-radius: 14px;" data-i18n="btn_load">読み込む</button>
+                <button class="btn hidden" id="yt-share-btn" style="background: var(--neon-purple); margin: 0; flex: 1; font-size: 15px; border-radius: 14px;" data-i18n="btn_share">共有</button>
+            </div>
+            <button class="btn" id="open-library-btn" style="background: rgba(0, 153, 255, 0.1); border: 2px solid var(--neon-cyan); color: var(--neon-cyan); margin: 18px 0 0 0; width: 100%; font-size: 14px; border-radius: 14px;">
+                <span data-i18n="btn_open_library">ライブラリから曲を探す</span>
+            </button>
+            <div id="yt-status" style="font-size: 13px; color: var(--neon-pink); margin-top: 10px; text-align: center; min-height: 18px; font-weight: 800;"></div>
+        </div>
+
+        <!-- BPM設定エリア（復活・強調） -->
+        <div class="input-group" id="bpm-group" style="border-color: var(--neon-lime);">
+            <span class="input-label" style="color: var(--neon-lime); display: flex; justify-content: space-between;">
+                BPM / SYNC
+                <span style="font-size:10px; opacity:0.7;">準自動同期</span>
+            </span>
+            <div class="bpm-control">
+                <input type="number" id="bpm-input" value="130" min="60" max="250" step="1">
+                <button id="tap-bpm-btn" class="btn" style="margin:0; padding: 14px; font-size: 12px;">TAP to SYNC!</button>
+            </div>
+            <div id="bpm-message" class="bpm-display">曲を聴きながらビートをTAP!</div>
+            
+            <!-- ハイブリッドモード用スイッチ -->
+            <button class="btn hybrid" id="toggle-analysis-btn">🎙️ PC限定: リアルタイム解析演出をONにする</button>
+        </div>
+
+        <div class="input-group">
+            <span class="input-label" data-i18n="label_level">難易度レベル</span>
             <div class="diff-selector" id="diff-selector">
                 <button class="diff-btn" data-diff="easy">EASY</button>
                 <button class="diff-btn active" data-diff="normal">NORMAL</button>
                 <button class="diff-btn" data-diff="hard">HARD</button>
                 <button class="diff-btn" data-diff="expert">EXPERT</button>
             </div>
-            
-            <div class="bpm-container">
-                <div style="display:flex; flex-direction:column; flex-grow:1;">
-                    <span class="input-label" style="margin-bottom:4px;">BPM (Tempo)</span>
-                    <input type="number" id="bpm-input" class="bpm-display" value="120" min="60" max="240">
-                </div>
-                <button class="tap-btn" id="bpm-tap-btn">TAP<br>RHYTHM</button>
-            </div>
-            
-            <button class="mic-toggle-btn" id="mic-toggle-btn">
-                <span>🎤</span> 音声同期(マイク)を有効にする
-            </button>
-            <div style="font-size: 10px; opacity: 0.6; margin-top: 5px;">※スピーカーの音をマイクで拾って背景を連動させます</div>
         </div>
 
         <div id="preview-box">
-            <div id="preview-placeholder">LOAD VIDEO TO PREVIEW</div>
+            <div id="preview-placeholder" data-i18n="preview_placeholder">動画を読み込むとここに表示されます</div>
             <div id="preview-content"></div>
         </div>
 
         <div id="menu-ranking-container" class="ranking-container hidden">
-            <h3 style="font-size: 14px; margin: 0 0 10px 0; color: var(--neon-lime);">TOP RANKERS</h3>
-            <div id="menu-ranking-list"></div>
+            <h3 style="font-size: 15px; margin: 0 0 15px 0; text-align: center; color: var(--neon-lime); letter-spacing: 3px; font-weight: 900;" data-i18n="ranking_title">ランキング</h3>
+            <div id="menu-ranking-list" class="ranking-list"></div>
         </div>
 
-        <button class="btn" id="start-btn" disabled>GAME START</button>
+        <div style="display: flex; gap: 15px; width: 100%; max-width: 340px; flex-shrink: 0; padding-bottom: 20px;">
+            <button class="btn" id="start-btn" disabled data-i18n="btn_ready" style="flex: 2; margin-bottom: 0;">準備完了</button>
+            <button class="btn" id="open-settings-btn" style="flex: 1; background: var(--panel-bg); border: 1px solid var(--neon-cyan); color: var(--text-color); margin-bottom: 0;">⚙️</button>
+        </div>
+    </div>
+
+    <!-- 設定画面 -->
+    <div id="settings-modal" class="modal">
+        <div class="modal-content" style="width: 100%; max-width: 450px; display: flex; flex-direction: column; height: 100%;">
+            <h2 style="text-align: center; color: var(--neon-cyan); margin: 0; font-weight: 900; flex-shrink: 0;" data-i18n="settings_title">操作設定</h2>
+            
+            <div class="input-group" style="margin-top: 25px;">
+                <span class="input-label" data-i18n="label_key_config">キーボード設定</span>
+                <div class="key-config-grid">
+                    <button class="key-bind-btn" data-lane="0">
+                        <span class="lane-arrow" style="color: var(--neon-cyan);">←</span>
+                        <span class="key-name" id="key-name-0">LEFT</span>
+                    </button>
+                    <button class="key-bind-btn" data-lane="1">
+                        <span class="lane-arrow" style="color: var(--neon-pink);">↓</span>
+                        <span class="key-name" id="key-name-1">DOWN</span>
+                    </button>
+                    <button class="key-bind-btn" data-lane="2">
+                        <span class="lane-arrow" style="color: var(--neon-lime);">↑</span>
+                        <span class="key-name" id="key-name-2">UP</span>
+                    </button>
+                    <button class="key-bind-btn" data-lane="3">
+                        <span class="lane-arrow" style="color: var(--neon-purple);">→</span>
+                        <span class="key-name" id="key-name-3">RIGHT</span>
+                    </button>
+                </div>
+                <button class="btn" id="reset-keys-btn" style="background: rgba(255, 0, 122, 0.15); border: 1px solid var(--neon-pink); color: var(--neon-pink); margin: 20px auto 0 auto; width: 100%; font-size: 14px; border-radius: 14px; box-shadow: none;" data-i18n="btn_reset">デフォルトに戻す</button>
+                <button class="btn" id="cleanup-tiktok-btn" style="background: rgba(255, 255, 255, 0.1); border: 1px solid #444; color: #888; margin: 10px auto 0 auto; width: 100%; font-size: 11px; border-radius: 10px; box-shadow: none;">TikTokデータを消去 (管理者用)</button>
+            </div>
+
+            <div class="input-group" style="margin-top: 0;">
+                <span class="input-label" data-i18n="label_gamepad">ゲームパッド状態</span>
+                <div id="gamepad-status" style="text-align:center; font-size: 14px; font-weight: bold; color: var(--neon-lime);">未接続</div>
+            </div>
+
+            <button class="btn" id="close-settings-btn" style="background: #1e293b; margin: auto auto 0 auto; border-radius: 14px; flex-shrink: 0;" data-i18n="btn_close">閉じる</button>
+        </div>
     </div>
 
     <!-- リザルト画面 -->
     <div id="result-screen" class="overlay-screen hidden">
-        <h2 style="color: var(--neon-cyan); margin: 30px 0 10px 0; font-size: 32px;">CLEAR!</h2>
-        <div style="font-size: 54px; font-weight: 900; margin-bottom: 20px;" id="final-score">0</div>
-        <div id="stats-detail" style="text-align: center; font-size: 14px; margin-bottom: 30px; line-height: 1.6;"></div>
+        <h2 style="color: var(--neon-cyan); margin: 25px 0 15px 0; font-size: 32px; font-weight: 900; letter-spacing: 4px;" data-i18n="result_title">STAGE CLEAR!</h2>
+        <div style="font-size: 64px; margin-bottom: 15px; color: var(--text-color); text-shadow: 0 0 30px var(--neon-cyan); font-weight: 900;" id="final-score">0</div>
+        <div id="stats-detail" style="text-align: center; font-size: 15px; color: var(--text-color); opacity: 0.9; margin-bottom: 25px; line-height: 1.8;"></div>
         
-        <div class="input-group">
-            <input type="text" id="player-comment" placeholder="Comment..." maxlength="30">
-            <button class="btn" id="register-score-btn" style="margin-top:10px; font-size:14px;">REGISTER SCORE</button>
+        <div class="input-group" id="score-reg-panel">
+            <span class="input-label" data-i18n="label_comment">一言コメントを残す</span>
+            <input type="text" id="player-comment" data-i18n-placeholder="placeholder_comment" maxlength="30">
+            <button class="btn" id="register-score-btn" style="margin: 20px 0 0 0; width: 100%; font-size: 15px;" data-i18n="btn_register">ランキングに登録</button>
         </div>
-        <button class="btn" id="retry-btn">BACK TO MENU</button>
+
+        <div class="ranking-container">
+            <h3 style="font-size: 18px; margin: 0 0 20px 0; text-align: center; color: var(--neon-cyan); letter-spacing: 4px; font-weight: 900;" data-i18n="ranking_world">WORLD RANKING</h3>
+            <div id="result-ranking-list" class="ranking-list"><div class="loader"></div></div>
+        </div>
+
+        <button class="btn" id="retry-btn" data-i18n="btn_back">メニューに戻る</button>
     </div>
 
-    <!-- ライブラリ画面 -->
+    <!-- ライブラリモーダル -->
     <div id="library-modal" class="modal">
-        <div class="modal-content" style="width: 100%; max-width: 450px; display: flex; flex-direction: column; height: 100%;">
-            <h2 style="text-align: center; color: var(--neon-cyan);">LIBRARY</h2>
-            <div class="library-tabs" id="library-tabs" style="display:flex; gap:10px; margin-bottom:15px; overflow-x:auto;">
-                <button class="tab-btn active" data-mode="new" style="border:none; background:transparent; color:var(--text-color); font-weight:bold; cursor:pointer;">NEW</button>
-                <button class="tab-btn" data-mode="daily" style="border:none; background:transparent; color:var(--text-color); opacity:0.5; font-weight:bold; cursor:pointer;">HOT</button>
+        <div class="modal-content" style="width: 100%; max-width: 500px; display: flex; flex-direction: column; height: 100%;">
+            <h2 style="text-align: center; color: var(--neon-cyan); margin: 0; font-weight: 900; letter-spacing: 3px; flex-shrink: 0;">SHARED LIBRARY</h2>
+            <p style="text-align: center; color: var(--text-color); opacity: 0.7; font-size: 13px; margin-bottom: 20px; flex-shrink: 0;" data-i18n="library_desc">コミュニティのお気に入り曲</p>
+            
+            <div class="library-tabs" id="library-tabs">
+                <button class="tab-btn active" data-mode="new" data-i18n="tab_new">新着順</button>
+                <button class="tab-btn" data-mode="daily" data-i18n="tab_daily">日別人気</button>
+                <button class="tab-btn" data-mode="weekly" data-i18n="tab_weekly">週別人気</button>
+                <button class="tab-btn" data-mode="monthly" data-i18n="tab_monthly">月別人気</button>
             </div>
-            <div id="shared-list-full" style="flex-grow: 1; overflow-y: auto;"></div>
-            <button class="btn" id="close-library-btn" style="background: #333; margin-top: 20px;">CLOSE</button>
+
+            <div id="shared-list-full" style="flex-grow: 1; overflow-y: auto;">
+                <div class="loader"></div>
+            </div>
+            <button class="btn" id="close-library-btn" style="background: #1e293b; margin: 30px auto 0 auto; border-radius: 14px; flex-shrink: 0;" data-i18n="btn_close">閉じる</button>
         </div>
     </div>
 
@@ -271,12 +399,9 @@
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
     import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-    import { getFirestore, collection, addDoc, getDocs, updateDoc, doc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    import { getFirestore, collection, addDoc, getDocs, updateDoc, doc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-    // -----------------------------------------------------------------------------------------
-    // 【設定エリア】Firebaseコンソールの設定(const firebaseConfig = {...})をここに貼り付けてください
-    // -----------------------------------------------------------------------------------------
-    const firebaseConfig = {
+    const myFirebaseConfig = {
         apiKey: "AIzaSyBiCTU35eBaVXhTfnd-XDifHDDxXZALQCM",
         authDomain: "neon-hero-2b368.firebaseapp.com",
         projectId: "neon-hero-2b368",
@@ -284,437 +409,1091 @@
         messagingSenderId: "904605896059",
         appId: "1:904605896059:web:87c5ab4437041e01e381de"
     };
-    // -----------------------------------------------------------------------------------------
 
-    // (自動処理: プレビュー環境か、上記の設定を使うかを自動判定します。この行は変更しないでください)
-    const activeConfig = (typeof window.__firebase_config !== 'undefined' && window.__firebase_config) 
+    const firebaseConfig = (typeof window.__firebase_config !== 'undefined' && window.__firebase_config) 
         ? JSON.parse(window.__firebase_config) 
-        : firebaseConfig; 
+        : myFirebaseConfig;
     
-    const targetAppId = (typeof window.__app_id !== 'undefined' && window.__app_id) ? window.__app_id : 'neon-hero-v5-sonic';
-    const app = initializeApp(activeConfig);
+    const targetAppId = (typeof window.__app_id !== 'undefined' && window.__app_id) 
+        ? window.__app_id 
+        : 'neon-hero-v5-prism';
+    
+    const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
     let currentUser = null;
 
-    signInAnonymously(auth).catch(console.error);
-    onAuthStateChanged(auth, u => currentUser = u);
+    const initAuth = async () => {
+        try { await signInAnonymously(auth); } catch (e) { console.error("Firebase Auth Error: ", e); }
+    };
+    initAuth();
+    onAuthStateChanged(auth, user => currentUser = user);
 
-    window.saveScore = async (data) => {
-        if (!currentUser) return;
-        try { await addDoc(collection(db, 'artifacts', targetAppId, 'public', 'data', 'scores'), { ...data, userId: currentUser.uid, timestamp: Date.now() }); } catch(e){}
-    };
-    window.getRankings = async (vid, diff) => {
-        if (!currentUser) return [];
-        try {
-            const sn = await getDocs(collection(db, 'artifacts', targetAppId, 'public', 'data', 'scores'));
-            let l = []; sn.forEach(d => { const v = d.data(); if(v.videoId===vid && v.difficulty===diff) l.push(v); });
-            return l.sort((a,b)=>b.score-a.score).slice(0,10);
-        } catch(e){return[];}
-    };
-    window.addVideo = async (vid, title, dur) => {
+    window.saveGameScore = async (data) => {
         if (!currentUser) return;
         try {
-            const c = collection(db, 'artifacts', targetAppId, 'public', 'data', 'shared_videos');
-            const sn = await getDocs(c);
-            let exist = null; sn.forEach(d => { if(d.data().videoId === vid) exist = d.id; });
-            if(!exist) await addDoc(c, { videoId: vid, title, duration: dur, timestamp: Date.now() });
-        } catch(e){}
+            const scoresCol = collection(db, 'artifacts', targetAppId, 'public', 'data', 'scores');
+            await addDoc(scoresCol, { ...data, userId: currentUser.uid, timestamp: Date.now() });
+        } catch (e) { console.error(e); }
     };
-    window.getVideos = async () => {
+
+    window.fetchRankings = async (videoId, difficulty) => {
         if (!currentUser) return [];
-        try { const sn = await getDocs(collection(db, 'artifacts', targetAppId, 'public', 'data', 'shared_videos')); const l=[]; sn.forEach(d=>l.push(d.data())); return l.sort((a,b)=>b.timestamp-a.timestamp); } catch(e){return[];}
+        try {
+            const scoresCol = collection(db, 'artifacts', targetAppId, 'public', 'data', 'scores');
+            const snapshot = await getDocs(scoresCol);
+            const list = [];
+            snapshot.forEach(doc => {
+                const item = doc.data();
+                if (item.videoId === videoId && item.difficulty === difficulty) list.push(item);
+            });
+            return list.sort((a, b) => b.score - a.score).slice(0, 10);
+        } catch (e) { return []; }
+    };
+
+    window.registerSharedVideo = async (videoId, title, duration, bpm = null) => {
+        if (!currentUser) return;
+        try {
+            const sharedCol = collection(db, 'artifacts', targetAppId, 'public', 'data', 'shared_videos');
+            const snapshot = await getDocs(sharedCol);
+            let existingId = null;
+            let currentData = {};
+            snapshot.forEach(d => { if (d.data().videoId === videoId) { existingId = d.id; currentData = d.data(); } });
+            
+            if (!existingId) {
+                await addDoc(sharedCol, { videoId, title, duration, bpm, timestamp: Date.now(), provider: 'youtube' });
+            } else {
+                const videoDoc = doc(db, 'artifacts', targetAppId, 'public', 'data', 'shared_videos', existingId);
+                const updates = { provider: 'youtube' };
+                if (duration) updates.duration = duration;
+                if (bpm) updates.bpm = bpm;
+                await updateDoc(videoDoc, updates);
+            }
+        } catch (e) { console.error(e); }
+    };
+
+    window.recordPlay = async (videoId, title) => {
+        if (!currentUser) return;
+        try {
+            const logsCol = collection(db, 'artifacts', targetAppId, 'public', 'data', 'play_logs');
+            await addDoc(logsCol, { videoId, title, timestamp: Date.now() });
+        } catch (e) { console.error(e); }
+    };
+
+    window.fetchSharedVideos = async () => {
+        if (!currentUser) return [];
+        try {
+            const sharedCol = collection(db, 'artifacts', targetAppId, 'public', 'data', 'shared_videos');
+            const snapshot = await getDocs(sharedCol);
+            const list = [];
+            snapshot.forEach(doc => list.push(doc.data()));
+            return list.sort((a, b) => b.timestamp - a.timestamp);
+        } catch (e) { return []; }
+    };
+
+    window.fetchPlayLogs = async () => {
+        if (!currentUser) return [];
+        try {
+            const logsCol = collection(db, 'artifacts', targetAppId, 'public', 'data', 'play_logs');
+            const snapshot = await getDocs(logsCol);
+            const list = [];
+            snapshot.forEach(doc => list.push(doc.data()));
+            return list;
+        } catch (e) { return []; }
+    };
+
+    // TikTokデータ抹消関数
+    window.cleanupTikTokData = async () => {
+        if (!currentUser) return;
+        try {
+            const sharedCol = collection(db, 'artifacts', targetAppId, 'public', 'data', 'shared_videos');
+            const snapshot = await getDocs(sharedCol);
+            let count = 0;
+            for (const d of snapshot.docs) {
+                if (d.data().provider === 'tiktok') {
+                    await deleteDoc(doc(db, 'artifacts', targetAppId, 'public', 'data', 'shared_videos', d.id));
+                    count++;
+                }
+            }
+            return count;
+        } catch (e) { console.error(e); return -1; }
     };
 </script>
 
 <script src="https://www.youtube.com/iframe_api"></script>
 <script>
-/* --- Seeded Random for Deterministic Map Generation --- */
-class SeededRandom {
-    constructor(seedStr) { this.seed = this.cyrb128(seedStr); }
-    cyrb128(str) {
-        let h1 = 1779033703, h2 = 3144134277, h3 = 1013904242, h4 = 2773480762;
-        for (let i = 0, k; i < str.length; i++) {
-            k = str.charCodeAt(i);
-            h1 = h2 ^ Math.imul(h1 ^ k, 597399067); h2 = h3 ^ Math.imul(h2 ^ k, 2869860233);
-            h3 = h4 ^ Math.imul(h3 ^ k, 951274213); h4 = h1 ^ Math.imul(h4 ^ k, 2716044179);
-        }
-        h1 = Math.imul(h3 ^ (h1 >>> 18), 597399067); h2 = Math.imul(h4 ^ (h2 >>> 22), 2869860233);
-        h3 = Math.imul(h1 ^ (h3 >>> 17), 951274213); h4 = Math.imul(h2 ^ (h4 >>> 19), 2716044179);
-        return [h1>>>0, h2>>>0, h3>>>0, h4>>>0];
-    }
-    random() {
-        let a = this.seed[0], b = this.seed[1], c = this.seed[2], d = this.seed[3];
-        let t = (a + b) | 0; a = b ^ b >>> 9; b = c + (c << 3) | 0; c = (c << 21) | (c >>> 11); d = (d + 1) | 0; t = (t + d) | 0; c = (c + t) | 0;
-        this.seed = [a,b,c,d]; return (t >>> 0) / 4294967296;
-    }
-}
+/**
+ * クライアントロジック
+ */
 
-/* --- Game Logic --- */
-const LANE_COUNT = 4;
-const JUDGMENT_MS = { PERFECT: 60, GREAT: 110, GOOD: 160, MISS: 250 };
-const CORE_COLORS = ['#00f2ff', '#ff007a', '#bcff00', '#9d00ff'];
-const DIFF_CONFIG = {
-    easy:   { speed: 0.45, density: 0.3, grid: 1 },
-    normal: { speed: 0.60, density: 0.5, grid: 2 },
-    hard:   { speed: 0.75, density: 0.7, grid: 4 },
-    expert: { speed: 0.95, density: 0.9, grid: 4 }
+const translations = {
+    ja: {
+        score_label: "スコア",
+        label_player_info: "プレイヤー登録",
+        placeholder_name: "名前#パスワードでトリップ...",
+        label_select_track: "動画トラック (YOUTUBE)",
+        placeholder_url: "YouTubeのURLを貼り付け",
+        btn_load: "読み込む",
+        btn_share: "共有",
+        btn_open_library: "ライブラリから曲を探す",
+        preview_placeholder: "動画を読み込むとここに表示されます",
+        ranking_title: "この曲のトップランカー",
+        btn_ready: "準備完了",
+        result_title: "STAGE CLEAR!",
+        label_comment: "一言コメントを残す",
+        placeholder_comment: "今日の気分は？",
+        btn_register: "ランキングに登録",
+        ranking_world: "WORLD RANKING",
+        btn_back: "メニューに戻る",
+        library_desc: "コミュニティのお気に入り曲",
+        btn_close: "閉じる",
+        msg_loading: "読み込み中...",
+        msg_ready: "準備完了！",
+        msg_error: "エラーが発生しました",
+        msg_no_records: "まだ記録がありません",
+        msg_copied: "リンクをコピーしました！",
+        stats_perfect: "パーフェクト",
+        stats_great: "グレート",
+        stats_good: "グッド",
+        stats_miss: "ミス",
+        stats_combo: "最大コンボ",
+        tab_new: "新着順",
+        tab_daily: "日別人気",
+        tab_weekly: "週別人気",
+        tab_monthly: "月別人気",
+        plays_suffix: "回プレイ",
+        settings_title: "操作設定",
+        label_key_config: "キーボード設定",
+        label_gamepad: "ゲームパッド状態",
+        msg_gamepad_on: "接続済み",
+        msg_gamepad_off: "未接続",
+        btn_skip_intro: "イントロをスキップ",
+        btn_reset: "デフォルトに戻す",
+        msg_reset_done: "初期設定に戻しました"
+    },
+    en: {
+        score_label: "SCORE",
+        label_player_info: "PLAYER REGISTRATION",
+        placeholder_name: "Name#password for trip...",
+        label_select_track: "VIDEO TRACK (YOUTUBE)",
+        placeholder_url: "Paste YouTube URL",
+        btn_load: "LOAD",
+        btn_share: "SHARE",
+        btn_open_library: "OPEN LIBRARY",
+        preview_placeholder: "TRACK PREVIEW AREA",
+        ranking_title: "TOP RANKERS",
+        btn_ready: "READY",
+        result_title: "STAGE CLEAR!",
+        label_comment: "LEAVE A COMMENT",
+        placeholder_comment: "How was the play?",
+        btn_register: "REGISTER SCORE",
+        ranking_world: "WORLD RANKING",
+        btn_back: "BACK TO MENU",
+        library_desc: "Community's Favorite Tracks",
+        btn_close: "CLOSE",
+        msg_loading: "Loading...",
+        msg_ready: "READY!",
+        msg_error: "ERROR OCCURRED",
+        msg_no_records: "NO RECORDS YET",
+        msg_copied: "Link copied!",
+        stats_perfect: "PERFECT",
+        stats_great: "GREAT",
+        stats_good: "GOOD",
+        stats_miss: "MISS",
+        stats_combo: "MAX COMBO",
+        tab_new: "Latest",
+        tab_daily: "Daily",
+        tab_weekly: "Weekly",
+        tab_monthly: "Monthly",
+        plays_suffix: " plays",
+        settings_title: "SETTINGS",
+        label_key_config: "KEYBOARD CONFIG",
+        label_gamepad: "GAMEPAD STATUS",
+        msg_gamepad_on: "CONNECTED",
+        msg_gamepad_off: "DISCONNECTED",
+        btn_skip_intro: "SKIP INTRO",
+        btn_reset: "RESET TO DEFAULT",
+        msg_reset_done: "Keys reset to default"
+    }
 };
 
-let gameState = 'START';
-let score=0, combo=0, maxCombo=0, stats={perfect:0, great:0, good:0, miss:0};
-let notes=[], particles=[];
-let currentVideoId="", currentDuration=0, ytPlayer;
-let currentDiff='normal', currentBpm=120;
-let activeLanes=[false,false,false,false];
-
-/* --- Audio Analysis (Mic) --- */
-let audioCtx, analyser, dataArray, micStream;
-let isMicEnabled = false;
-
-const micToggleBtn = document.getElementById('mic-toggle-btn');
-micToggleBtn.addEventListener('click', async () => {
-    if(!isMicEnabled) {
-        try {
-            micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            analyser = audioCtx.createAnalyser();
-            const source = audioCtx.createMediaStreamSource(micStream);
-            source.connect(analyser);
-            analyser.fftSize = 64;
-            dataArray = new Uint8Array(analyser.frequencyBinCount);
-            isMicEnabled = true;
-            micToggleBtn.classList.add('active');
-            micToggleBtn.innerHTML = "<span>🎤</span> 音声同期ON (Listening...)";
-            showToast("マイク同期を有効にしました。スピーカーの音を拾います。");
-        } catch(e) {
-            alert("マイクへのアクセスが拒否されました。設定を確認してください。");
-        }
-    } else {
-        if(micStream) micStream.getTracks().forEach(t=>t.stop());
-        if(audioCtx) audioCtx.close();
-        isMicEnabled = false;
-        micToggleBtn.classList.remove('active');
-        micToggleBtn.innerHTML = "<span>🎤</span> 音声同期(マイク)を有効にする";
-    }
-});
-
-/* --- BPM Tap --- */
-let tapTimes = [];
-const bpmInput = document.getElementById('bpm-input');
-document.getElementById('bpm-tap-btn').addEventListener('click', () => {
-    const now = Date.now();
-    if (tapTimes.length > 0 && now - tapTimes[tapTimes.length-1] > 2000) tapTimes = [];
-    tapTimes.push(now);
-    if(tapTimes.length > 5) tapTimes.shift();
-    if(tapTimes.length >= 2) {
-        let ints = [];
-        for(let i=1; i<tapTimes.length; i++) ints.push(tapTimes[i]-tapTimes[i-1]);
-        const avg = ints.reduce((a,b)=>a+b)/ints.length;
-        currentBpm = Math.round(60000/avg);
-        currentBpm = Math.max(40, Math.min(300, currentBpm));
-        bpmInput.value = currentBpm;
-        if(currentDuration > 0) notes = generateMap(currentDuration);
-    }
-});
-bpmInput.addEventListener('change', (e) => {
-    let v = parseInt(e.target.value);
-    currentBpm = Math.max(40, Math.min(300, v));
-    if(currentDuration > 0) notes = generateMap(currentDuration);
-});
-
-/* --- Map Generation (Structured) --- */
-function generateMap(duration) {
-    const map = [];
-    const cfg = DIFF_CONFIG[currentDiff];
-    const rng = new SeededRandom(currentVideoId || "seed");
-    const beatMs = 60000 / currentBpm;
-    const totalMs = duration * 1000;
-    
-    // 曲の展開をシミュレート (Intro -> A -> B -> Chorus...)
-    let t = 2000; // start delay
-    let sectionTime = 0;
-    
-    while(t < totalMs - 3000) {
-        // セクション決定 (16~32小節)
-        const secBeats = (16 + Math.floor(rng.random()*16)) * 4;
-        const secDur = secBeats * beatMs;
-        const intensity = rng.random(); // 0.0 ~ 1.0 (静か ~ 激しい)
-        
-        const secEnd = Math.min(t + secDur, totalMs - 3000);
-        const effectiveDensity = cfg.density * (0.5 + intensity * 0.5); // 難易度と展開で密度変化
-        
-        while(t < secEnd) {
-            // グリッド進行
-            const division = (intensity > 0.7 && cfg.grid >= 2) ? 2 : 1; // 盛り上がりで倍速配置
-            const step = beatMs / division;
-            
-            if(rng.random() < effectiveDensity) {
-                // ノート生成
-                const lane = Math.floor(rng.random() * LANE_COUNT);
-                map.push({ time: t, lane: lane, hit: false });
-                
-                // 同時押し (Hard以上)
-                if(currentDiff !== 'easy' && rng.random() < (intensity * 0.3)) {
-                    const lane2 = (lane + 1 + Math.floor(rng.random() * 2)) % LANE_COUNT;
-                    map.push({ time: t, lane: lane2, hit: false });
-                }
-            }
-            t += step;
-        }
-    }
-    return map.sort((a,b)=>a.time-b.time);
-}
-
-/* --- Rendering --- */
-const canvas = document.getElementById('gameCanvas');
-const ctx = canvas.getContext('2d');
-const vCanvas = document.getElementById('visualizerCanvas');
-const vCtx = vCanvas.getContext('2d');
 const gameContainer = document.getElementById('game-container');
+const canvas = document.getElementById('gameCanvas');
+const visualizerCanvas = document.getElementById('visualizer-canvas');
+const ctx = canvas.getContext('2d');
+const vCtx = visualizerCanvas.getContext('2d');
+const mediaBgContainer = document.getElementById('media-bg-container');
+const previewContent = document.getElementById('preview-content');
+const previewPlaceholder = document.getElementById('preview-placeholder');
+const sharedListFull = document.getElementById('shared-list-full');
+const libraryModal = document.getElementById('library-modal');
+const settingsModal = document.getElementById('settings-modal');
+const openSettingsBtn = document.getElementById('open-settings-btn');
+const closeSettingsBtn = document.getElementById('close-settings-btn');
+const resetKeysBtn = document.getElementById('reset-keys-btn');
+const cleanupTiktokBtn = document.getElementById('cleanup-tiktok-btn');
+const openLibraryBtn = document.getElementById('open-library-btn');
+const closeLibraryBtn = document.getElementById('close-library-btn');
+const skipIntroBtn = document.getElementById('skip-intro-btn');
+const startBtn = document.getElementById('start-btn');
+const toggleAnalysisBtn = document.getElementById('toggle-analysis-btn');
+const ytLoadBtn = document.getElementById('yt-load-btn');
+const ytShareBtn = document.getElementById('yt-share-btn');
+const registerScoreBtn = document.getElementById('register-score-btn');
+const retryBtn = document.getElementById('retry-btn');
+const startScreen = document.getElementById('start-screen');
+const resultScreen = document.getElementById('result-screen');
+const scoreVal = document.getElementById('score-val');
+const comboText = document.getElementById('combo-text');
+const judgmentText = document.getElementById('judgment-text');
+const ytStatus = document.getElementById('yt-status');
+const diffSelector = document.getElementById('diff-selector');
+const menuRankingContainer = document.getElementById('menu-ranking-container');
+const menuRankingList = document.getElementById('menu-ranking-list');
+const resultRankingList = document.getElementById('result-ranking-list');
+const playerNameInput = document.getElementById('player-name');
+const playerCommentInput = document.getElementById('player-comment');
+const ytUrlInput = document.getElementById('yt-url');
+const themeToggle = document.getElementById('theme-toggle');
+const libraryTabs = document.getElementById('library-tabs');
+const gamepadStatus = document.getElementById('gamepad-status');
+const tapBpmBtn = document.getElementById('tap-bpm-btn');
+const bpmInput = document.getElementById('bpm-input');
+const bpmMessage = document.getElementById('bpm-message');
 
-function resize() {
-    canvas.width = gameContainer.clientWidth;
-    canvas.height = gameContainer.clientHeight;
-    vCanvas.width = canvas.width;
-    vCanvas.height = canvas.height;
+const LANE_COUNT = 4;
+const JUDGMENT_MS = { PERFECT: 60, GREAT: 110, GOOD: 160, MISS: 250 };
+const HIT_LINE_Y = 0.82;
+const CORE_COLORS = ['#00f2ff', '#ff007a', '#bcff00', '#9d00ff'];
+
+const DIFFICULTY_CONFIG = {
+    easy:   { speed: 0.45, density: 0.5 },
+    normal: { speed: 0.60, density: 1.0 },
+    hard:   { speed: 0.75, density: 1.5 },
+    expert: { speed: 0.95, density: 2.0 }
+};
+
+const DEFAULT_KEYS = ["arrowleft", "arrowdown", "arrowup", "arrowright"];
+let currentDiff = 'normal';
+let gameState = 'START';
+let playMode = 'NONE'; // 'NONE', 'VIDEO' (Analysis is now a flag)
+let isAnalysisEnabled = false;
+let score = 0, combo = 0, maxCombo = 0;
+let notes = [];
+let gameStartTime = 0;
+let stats = { perfect: 0, great: 0, good: 0, miss: 0 };
+let activeLanes = [false, false, false, false];
+let particles = [];
+let currentVideoId = "";
+let currentDuration = 0;
+let ytPlayer;
+let currentLang = 'en';
+let uiText = translations.en;
+let tapTimes = [];
+let lastTapVideoTime = 0; 
+
+// Audio Analysis Variables
+let audioContext, analyser, dataArray, source;
+let analysisStream = null;
+let lastNoteTime = 0;
+let energyHistory = [];
+
+// キーコンフィグ
+let keyBindings = JSON.parse(localStorage.getItem('neon-hero-keys')) || [...DEFAULT_KEYS];
+let isBindingKey = null;
+
+function initI18n() {
+    currentLang = navigator.language.startsWith('ja') ? 'ja' : 'en';
+    uiText = translations[currentLang];
+    
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+        el.innerText = uiText[el.dataset.i18n] || el.innerText;
+    });
+    document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+        const key = el.dataset.i18nPlaceholder;
+        if (uiText[key]) el.placeholder = uiText[key];
+    });
 }
-window.addEventListener('resize', resize);
-resize();
 
-function draw() {
-    const now = (ytPlayer && ytPlayer.getCurrentTime) ? ytPlayer.getCurrentTime() * 1000 : 0;
+initI18n();
+
+function formatDuration(seconds) {
+    if (!seconds) return "";
+    const m = Math.floor(seconds / 60);
+    const s = Math.floor(seconds % 60);
+    return `${m}:${s.toString().padStart(2, '0')}`;
+}
+
+playerNameInput.value = localStorage.getItem('neon-hero-player-name-raw') || "";
+if (localStorage.getItem('neon-hero-theme') === 'light') {
+    document.body.classList.add('light-mode');
+    themeToggle.innerText = '☀️';
+}
+
+themeToggle.addEventListener('click', () => {
+    document.body.classList.toggle('light-mode');
     const isLight = document.body.classList.contains('light-mode');
+    themeToggle.innerText = isLight ? '☀️' : '🌙';
+    localStorage.setItem('neon-hero-theme', isLight ? 'light' : 'dark');
+});
+
+function updateKeyConfigUI() {
+    keyBindings.forEach((key, idx) => {
+        const el = document.getElementById(`key-name-${idx}`);
+        if (el) el.innerText = key.toUpperCase().replace('ARROW', '');
+    });
+}
+updateKeyConfigUI();
+
+document.querySelectorAll('.key-bind-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        isBindingKey = parseInt(btn.dataset.lane);
+        btn.classList.add('waiting');
+        btn.querySelector('.key-name').innerText = "...";
+    });
+});
+
+openSettingsBtn.addEventListener('click', () => settingsModal.classList.add('is-visible'));
+closeSettingsBtn.addEventListener('click', () => {
+    settingsModal.classList.remove('is-visible');
+    isBindingKey = null;
+    document.querySelectorAll('.key-bind-btn').forEach(b => b.classList.remove('waiting'));
+    updateKeyConfigUI();
+});
+
+resetKeysBtn.addEventListener('click', () => {
+    keyBindings = [...DEFAULT_KEYS];
+    localStorage.setItem('neon-hero-keys', JSON.stringify(keyBindings));
+    updateKeyConfigUI();
+    showToast(uiText.msg_reset_done);
+});
+
+// TikTokデータ削除実行
+cleanupTiktokBtn.addEventListener('click', async () => {
+    if (!confirm("TikTokの履歴データをすべて削除しますか？")) return;
+    cleanupTiktokBtn.disabled = true;
+    cleanupTiktokBtn.innerText = "削除中...";
+    const count = await window.cleanupTikTokData();
+    cleanupTiktokBtn.disabled = false;
+    cleanupTiktokBtn.innerText = "TikTokデータを消去 (管理者用)";
+    showToast(`${count}件のデータを削除しました`);
+});
+
+// BPM Tap Logic
+tapBpmBtn.addEventListener('click', () => {
+    const now = Date.now();
+    const videoTime = getCurrentTimeMs(); // 動画の現在時間を取得
+
+    // 2秒以上間隔が空いたらリセット
+    if (tapTimes.length > 0 && now - tapTimes[tapTimes.length - 1] > 2000) {
+        tapTimes = [];
+        bpmMessage.innerText = "Reset. Tap again!";
+    }
     
-    // 1. Visualizer Draw
-    vCtx.clearRect(0, 0, vCanvas.width, vCanvas.height);
-    let bassKick = 0;
+    tapTimes.push(now);
+    lastTapVideoTime = videoTime; // 動画上のタイミングを保存
     
-    if (isMicEnabled && analyser) {
-        analyser.getByteFrequencyData(dataArray);
-        const bars = 10;
-        const step = Math.floor(dataArray.length / bars);
-        const w = vCanvas.width / bars;
+    // アニメーション効果
+    tapBpmBtn.style.transform = "scale(0.9)";
+    setTimeout(() => tapBpmBtn.style.transform = "scale(1)", 100);
+
+    if (tapTimes.length >= 4) {
+        // 直近8回の平均を取る
+        const relevantTaps = tapTimes.slice(-8); 
+        let intervals = [];
+        for (let i = 1; i < relevantTaps.length; i++) {
+            intervals.push(relevantTaps[i] - relevantTaps[i-1]);
+        }
+        const avgInterval = intervals.reduce((a, b) => a + b, 0) / intervals.length;
+        const bpm = Math.round(60000 / avgInterval);
         
-        bassKick = dataArray[1] / 255; // 低音成分
-        
-        for(let i=0; i<bars; i++) {
-            const val = dataArray[i * step];
-            const h = (val / 255) * vCanvas.height * 0.4;
-            vCtx.fillStyle = isLight ? `rgba(0,0,0,0.05)` : `rgba(255,255,255,0.05)`;
-            vCtx.fillRect(i * w, vCanvas.height - h, w - 2, h);
+        // 範囲制限
+        if (bpm >= 60 && bpm <= 300) {
+            bpmInput.value = bpm;
+            bpmMessage.innerText = `SYNCED: ${bpm} BPM`;
+            bpmMessage.style.color = "var(--neon-lime)";
             
-            // ピークフラッシュ
-            if (val > 200) {
-                vCtx.fillStyle = CORE_COLORS[i % 4];
-                vCtx.globalAlpha = 0.1;
-                vCtx.fillRect(i * w, 0, w, vCanvas.height);
-                vCtx.globalAlpha = 1.0;
+            // BPMが変更されたらマップ再生成 (オフセット情報付き)
+            if (currentDuration > 0) {
+                notes = generateMap(currentDuration, currentVideoId);
+                showToast(`BPM:${bpm} で譜面を再構築しました`);
             }
         }
     } else {
-        // 擬似ビジュアライザー (BPM同期)
-        const beatProg = (Date.now() % (60000/currentBpm)) / (60000/currentBpm);
-        if (beatProg < 0.1) bassKick = 0.5;
+        bpmMessage.innerText = `Keep tapping... (${tapTimes.length})`;
     }
-    
-    // 背景の明滅 (Bass Kick連動)
-    if (bassKick > 0.4) {
-        gameContainer.style.boxShadow = `0 0 ${30 + bassKick * 50}px var(--neon-purple)`;
-    } else {
-        gameContainer.style.boxShadow = `0 30px 60px var(--shadow-color)`;
+});
+// 手動入力時も再生成
+bpmInput.addEventListener('change', () => {
+    if (currentDuration > 0) {
+        notes = generateMap(currentDuration, currentVideoId);
     }
+});
 
-    // 2. Game Draw
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    if(gameState !== 'PLAYING') {
-        requestAnimationFrame(draw);
+
+function skipIntro() {
+    if (ytPlayer && notes.length > 0) {
+        const firstNoteTime = notes[0].time;
+        const seekTarget = Math.max(0, (firstNoteTime - 2000) / 1000);
+        ytPlayer.seekTo(seekTarget, true);
+        skipIntroBtn.style.display = 'none';
+    }
+}
+skipIntroBtn.addEventListener('click', skipIntro);
+
+function pollGamepad() {
+    const gamepads = navigator.getGamepads();
+    if (!gamepads[0]) {
+        gamepadStatus.innerText = uiText.msg_gamepad_off;
+        gamepadStatus.style.color = "var(--neon-pink)";
         return;
     }
+    gamepadStatus.innerText = uiText.msg_gamepad_on;
+    gamepadStatus.style.color = "var(--neon-lime)";
+    if (gameState !== 'PLAYING') return;
+    const gp = gamepads[0];
+    const btnMap = [
+        gp.buttons[14]?.pressed || gp.buttons[0]?.pressed,
+        gp.buttons[13]?.pressed || gp.buttons[1]?.pressed,
+        gp.buttons[12]?.pressed || gp.buttons[3]?.pressed,
+        gp.buttons[15]?.pressed || gp.buttons[2]?.pressed
+    ];
+    btnMap.forEach((isPressed, idx) => {
+        if (isPressed && !activeLanes[idx]) { activeLanes[idx] = true; checkHit(idx); }
+        else if (!isPressed && activeLanes[idx]) { activeLanes[idx] = false; }
+    });
+}
+
+function handleKeyDown(key) {
+    const k = key.toLowerCase();
+    if (isBindingKey !== null) {
+        keyBindings[isBindingKey] = k;
+        localStorage.setItem('neon-hero-keys', JSON.stringify(keyBindings));
+        isBindingKey = null;
+        document.querySelectorAll('.key-bind-btn').forEach(b => b.classList.remove('waiting'));
+        updateKeyConfigUI();
+        return;
+    }
+    if (gameState !== 'PLAYING') return;
+    const laneIdx = keyBindings.indexOf(k);
+    if (laneIdx !== -1 && !activeLanes[laneIdx]) {
+        activeLanes[laneIdx] = true;
+        const btn = document.getElementById(`btn-${laneIdx}`);
+        if (btn) btn.classList.add('active');
+        checkHit(laneIdx);
+    }
+}
+
+function handleKeyUp(key) {
+    const k = key.toLowerCase();
+    const laneIdx = keyBindings.indexOf(k);
+    if (laneIdx !== -1) {
+        activeLanes[laneIdx] = false;
+        const btn = document.getElementById(`btn-${laneIdx}`);
+        if (btn) btn.classList.remove('active');
+    }
+}
+
+async function generateTrip(password) {
+    if (!password) return "";
+    const encoder = new TextEncoder();
+    const data = encoder.encode(password);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const base64 = btoa(String.fromCharCode(...hashArray));
+    return " ◆" + base64.substring(0, 10).replace(/\+/g, '.').replace(/\//g, '_');
+}
+
+async function parsePlayerName(rawName) {
+    const parts = rawName.split('#');
+    const name = parts[0] || (currentLang === 'ja' ? '名無し' : 'Anonymous');
+    const trip = parts.length > 1 ? await generateTrip(parts[1]) : "";
+    return { name, trip };
+}
+
+openLibraryBtn.addEventListener('click', () => {
+    libraryModal.classList.add('is-visible');
+    renderLibrary('new');
+});
+
+closeLibraryBtn.addEventListener('click', () => libraryModal.classList.remove('is-visible'));
+
+libraryTabs.addEventListener('click', (e) => {
+    const btn = e.target.closest('.tab-btn');
+    if (!btn) return;
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    renderLibrary(btn.dataset.mode);
+});
+
+diffSelector.addEventListener('click', (e) => {
+    const target = e.target.closest('.diff-btn');
+    if (target) {
+        document.querySelectorAll('.diff-btn').forEach(btn => btn.classList.remove('active'));
+        target.classList.add('active');
+        currentDiff = target.dataset.diff;
+        if (currentDuration > 0) {
+            notes = generateMap(currentDuration, currentVideoId);
+            updateRankingDisplay(currentVideoId, currentDiff, menuRankingList, menuRankingContainer);
+        }
+    }
+});
+
+async function renderLibrary(mode) {
+    sharedListFull.innerHTML = '<div class="loader"></div>';
+    if (typeof window.fetchSharedVideos !== 'function' || typeof window.fetchPlayLogs !== 'function') return;
+
+    const [videos, logs] = await Promise.all([window.fetchSharedVideos(), window.fetchPlayLogs()]);
+    let displayList = [];
+    const now = Date.now();
+    const periods = { daily: 86400000, weekly: 604800000, monthly: 2592000000 };
+
+    if (mode === 'new') {
+        displayList = videos.map(v => ({...v, playCount: logs.filter(l => l.videoId === v.videoId).length}));
+    } else {
+        const threshold = periods[mode];
+        const recentLogs = logs.filter(l => (now - l.timestamp) < threshold);
+        const counts = recentLogs.reduce((acc, log) => { acc[log.videoId] = (acc[log.videoId] || 0) + 1; return acc; }, {});
+        displayList = Object.entries(counts).map(([videoId, count]) => {
+            const video = videos.find(v => v.videoId === videoId);
+            return video ? { ...video, playCount: count } : null;
+        }).filter(v => v !== null).sort((a, b) => b.playCount - a.playCount);
+    }
+
+    if (displayList.length === 0) {
+        sharedListFull.innerHTML = `<div style="text-align:center; padding:20px; opacity:0.5;">${uiText.msg_no_records}</div>`;
+        return;
+    }
+
+    sharedListFull.innerHTML = displayList.map(v => {
+        // TikTokデータが混ざっている場合のフォールバック
+        const thumb = v.provider === 'tiktok' ? 'https://www.tiktok.com/favicon.ico' : `https://img.youtube.com/vi/${v.videoId}/mqdefault.jpg`;
+        const bpmDisplay = v.bpm ? `<span style="color:var(--neon-lime); font-size:10px; margin-left:5px;">BPM:${v.bpm}</span>` : "";
+        return `
+        <div class="shared-item-full" data-id="${v.videoId}" data-bpm="${v.bpm || ''}">
+            <span class="play-count-badge">${v.playCount}${uiText.plays_suffix}</span>
+            <div class="thumbnail-container">
+                <img src="${thumb}" class="shared-thumbnail" onerror="this.src='https://via.placeholder.com/120x68?text=No+Image'">
+                ${v.duration ? `<span class="duration-badge">${formatDuration(v.duration)}</span>` : ""}
+            </div>
+            <div class="shared-item-info">
+                <div class="shared-item-title">${v.title || "Untitled Track"} ${bpmDisplay}</div>
+            </div>
+        </div>
+    `}).join('');
     
-    const laneW = canvas.width / LANE_COUNT;
-    const hitY = canvas.height * 0.82;
-    const cfg = DIFF_CONFIG[currentDiff];
+    document.querySelectorAll('.shared-item-full').forEach(item => {
+        item.addEventListener('click', () => {
+            ytUrlInput.value = `https://www.youtube.com/watch?v=${item.dataset.id}`;
+            const savedBpm = item.dataset.bpm;
+            if (savedBpm && savedBpm !== "undefined") {
+                bpmInput.value = savedBpm;
+                bpmMessage.innerText = `Loaded: ${savedBpm} BPM`;
+            }
+            loadYoutube(item.dataset.id);
+            libraryModal.classList.remove('is-visible');
+        });
+    });
+}
+
+function extractYoutubeId(url) {
+    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+    const match = url.match(regExp);
+    return (match && match[2].length === 11) ? match[2] : null;
+}
+
+function loadYoutube(vidId) {
+    currentVideoId = vidId;
+    ytStatus.innerHTML = `<div class="loader"></div> ${uiText.msg_loading}`;
+    previewPlaceholder.classList.add('hidden');
+    previewContent.innerHTML = '<div id="yt-player-target"></div>';
+    const safeOrigin = window.location.protocol === 'file:' ? 'https://www.youtube.com' : window.location.origin;
+    ytPlayer = new YT.Player('yt-player-target', {
+        height: '100%', width: '100%', videoId: vidId,
+        playerVars: { 'autoplay': 1, 'controls': 1, 'origin': safeOrigin, 'enablejsapi': 1, 'modestbranding': 1, 'mute': 0 },
+        events: {
+            'onReady': (e) => {
+                const duration = e.target.getDuration();
+                if (duration === 0) { ytStatus.innerText = uiText.msg_error; return; }
+                currentDuration = duration;
+                notes = generateMap(currentDuration, vidId);
+                playMode = 'VIDEO';
+                ytStatus.innerText = uiText.msg_ready;
+                startBtn.disabled = false;
+                toggleAnalysisBtn.style.display = 'block'; // 動画読み込み後に表示
+                ytShareBtn.classList.remove('hidden');
+                updateRankingDisplay(currentVideoId, currentDiff, menuRankingList, menuRankingContainer);
+                // BPMも保存するために登録関数を更新（非同期でOK）
+                window.registerSharedVideo(vidId, ytPlayer.getVideoData().title, Math.floor(duration), parseInt(bpmInput.value));
+                e.target.unMute();
+                e.target.setVolume(50); 
+            },
+            'onError': (e) => { ytStatus.innerText = uiText.msg_error; }
+        }
+    });
+}
+
+ytLoadBtn.addEventListener('click', () => {
+    const vidId = extractYoutubeId(ytUrlInput.value);
+    if (vidId) loadYoutube(vidId); else ytStatus.innerText = uiText.msg_error;
+});
+
+ytShareBtn.addEventListener('click', () => {
+    const shareUrl = `${window.location.origin}${window.location.pathname}?v=${currentVideoId}`;
+    const tempInput = document.createElement("input");
+    tempInput.value = shareUrl; document.body.appendChild(tempInput); tempInput.select();
+    document.execCommand("copy"); document.body.removeChild(tempInput);
+    showToast(uiText.msg_copied);
+});
+
+function showToast(msg) {
+    const toast = document.createElement("div");
+    toast.className = "toast"; toast.innerText = msg;
+    document.body.appendChild(toast); setTimeout(() => toast.remove(), 2500);
+}
+
+// シード付き乱数生成クラス
+class SeededRandom {
+    constructor(seedString) {
+        let h1 = 1779033703, h2 = 3144134277, h3 = 1013904242, h4 = 2773480762;
+        for (let i = 0, k; i < seedString.length; i++) {
+            k = seedString.charCodeAt(i);
+            h1 = h2 ^ Math.imul(h1 ^ k, 597399067);
+            h2 = h3 ^ Math.imul(h2 ^ k, 2869860233);
+            h3 = h4 ^ Math.imul(h3 ^ k, 951274213);
+            h4 = h1 ^ Math.imul(h4 ^ k, 2716044179);
+        }
+        h1 = Math.imul(h3 ^ (h1 >>> 18), 597399067);
+        h2 = Math.imul(h4 ^ (h2 >>> 22), 2869860233);
+        h3 = Math.imul(h1 ^ (h3 >>> 17), 951274213);
+        h4 = Math.imul(h2 ^ (h4 >>> 19), 2716044179);
+        this.a = h1 >>> 0; this.b = h2 >>> 0; this.c = h3 >>> 0; this.d = h4 >>> 0;
+    }
+    next() {
+        this.a >>>= 0; this.b >>>= 0; this.c >>>= 0; this.d >>>= 0; 
+        let t = (this.a + this.b) | 0;
+        this.a = this.b ^ (this.b >>> 9);
+        this.b = (this.c + (this.c << 3)) | 0;
+        this.c = (this.c << 21) | (this.c >>> 11);
+        this.d = (this.d + 1) | 0;
+        t = (t + this.d) | 0;
+        this.c = (this.c + t) | 0;
+        return (t >>> 0) / 4294967296;
+    }
+}
+
+function generateMap(durationSeconds, seedStr = "default") {
+    const map = [];
+    const config = DIFFICULTY_CONFIG[currentDiff];
     
-    // Lanes
-    for(let i=0; i<LANE_COUNT; i++) {
-        ctx.fillStyle = activeLanes[i] ? (isLight?'rgba(0,0,0,0.1)':'rgba(255,255,255,0.1)') : 'transparent';
-        ctx.fillRect(i*laneW, 0, laneW, canvas.height);
-        ctx.strokeStyle = activeLanes[i] ? CORE_COLORS[i] : 'rgba(128,128,128,0.2)';
-        ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(i*laneW+10, hitY); ctx.lineTo((i+1)*laneW-10, hitY); ctx.stroke();
+    const rng = new SeededRandom(seedStr + currentDiff);
+    
+    const bpm = parseInt(bpmInput.value) || 130;
+    const beatInterval = 60000 / bpm; 
+    
+    let startOffset = 2500;
+    
+    if (lastTapVideoTime > 0) {
+        const rawRem = lastTapVideoTime % beatInterval;
+        startOffset = rawRem;
+        while(startOffset < 2000) {
+            startOffset += beatInterval;
+        }
+    }
+
+    const endOffset = durationSeconds * 1000 - 2000;
+    
+    let currentBeat = 0;
+    let currentTime = startOffset;
+    const noteProb = config.density; 
+
+    while (currentTime < endOffset) {
+        let isNote = rng.next() < (noteProb * 0.8);
+        const measure = Math.floor(currentBeat / 4);
+        const isChorus = (measure % 8 >= 4); 
+        
+        if (isChorus) {
+            isNote = rng.next() < (noteProb * 1.2);
+            if ((currentDiff === 'hard' || currentDiff === 'expert') && rng.next() < 0.4) {
+                 const eighthTime = currentTime + (beatInterval / 2);
+                 if (eighthTime < endOffset) {
+                    map.push({ time: eighthTime, lane: Math.floor(rng.next() * LANE_COUNT), hit: false });
+                 }
+            }
+        }
+
+        if (isNote) {
+            map.push({ time: currentTime, lane: Math.floor(rng.next() * LANE_COUNT), hit: false });
+            if ((currentDiff === 'expert') && rng.next() < 0.2) {
+                map.push({ time: currentTime, lane: (Math.floor(rng.next() * LANE_COUNT) + 1) % LANE_COUNT, hit: false });
+            }
+        }
+
+        currentTime += beatInterval;
+        currentBeat++;
+    }
+    return map.sort((a,b) => a.time - b.time);
+}
+
+function getCurrentTimeMs() {
+    return (playMode === 'VIDEO' && ytPlayer?.getCurrentTime) ? ytPlayer.getCurrentTime() * 1000 : 0;
+}
+
+// ------ Hybrid Audio Analysis ------
+async function setupAudioAnalysis() {
+    try {
+        if (!navigator.mediaDevices.getDisplayMedia) {
+            alert("このブラウザは画面共有音声キャプチャに対応していません。");
+            return false;
+        }
+
+        const stream = await navigator.mediaDevices.getDisplayMedia({
+            video: true,
+            audio: {
+                echoCancellation: false,
+                autoGainControl: false,
+                noiseSuppression: false,
+                channelCount: 2
+            }
+        });
+
+        const audioTrack = stream.getAudioTracks()[0];
+        if (!audioTrack) {
+            alert("音声が共有されていません。「システムオーディオを共有」または「タブの音声を共有」をチェックしてください。");
+            stream.getTracks().forEach(t => t.stop());
+            return false;
+        }
+
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        analysisStream = stream;
+        source = audioContext.createMediaStreamSource(stream);
+        analyser = audioContext.createAnalyser();
+        analyser.fftSize = 256;
+        source.connect(analyser);
+        
+        dataArray = new Uint8Array(analyser.frequencyBinCount);
+        
+        isAnalysisEnabled = true;
+        toggleAnalysisBtn.classList.add('active');
+        toggleAnalysisBtn.innerText = "リアルタイム解析中 (ON)";
+        
+        // ユーザーが共有停止した時の処理
+        audioTrack.onended = () => {
+            isAnalysisEnabled = false;
+            toggleAnalysisBtn.classList.remove('active');
+            toggleAnalysisBtn.innerText = "🎙️ PC限定: リアルタイム解析演出をONにする";
+            analysisStream = null;
+        };
+
+        return true;
+
+    } catch (err) {
+        console.error("Error: " + err);
+        return false;
+    }
+}
+
+// シンプルなビート検出（エネルギー閾値法） & Visualizer
+function processAudioVisuals() {
+    if (!analyser) return;
+    analyser.getByteFrequencyData(dataArray);
+
+    // Visualizer Draw
+    vCtx.clearRect(0, 0, visualizerCanvas.width, visualizerCanvas.height);
+    const barWidth = visualizerCanvas.width / (dataArray.length / 2);
+    
+    // 低音域のエネルギー計算
+    let bassEnergy = 0;
+    const binCount = 6; 
+    for (let i = 0; i < binCount; i++) bassEnergy += dataArray[i];
+    bassEnergy /= binCount;
+
+    // Visualizer Bars
+    for(let i = 0; i < dataArray.length / 2; i++) {
+        const barHeight = dataArray[i];
+        // 強いビートのときは色を変える
+        if (bassEnergy > 200) {
+            vCtx.fillStyle = `rgba(255, 0, 122, ${barHeight/255})`;
+        } else {
+            vCtx.fillStyle = `rgba(0, 242, 255, ${barHeight/255})`;
+        }
+        vCtx.fillRect(i * barWidth, visualizerCanvas.height - barHeight, barWidth, barHeight);
+    }
+
+    // Beat Detection Logic for Screen Shake
+    energyHistory.push(bassEnergy);
+    if (energyHistory.length > 30) energyHistory.shift();
+    let avgEnergy = energyHistory.reduce((a,b) => a+b, 0) / energyHistory.length;
+    
+    const now = performance.now();
+    if (bassEnergy > avgEnergy * 1.5 && bassEnergy > 120) {
+        if (now - lastNoteTime > 200) { 
+            // 強いビートを検出したら画面を揺らす
+            triggerBeatEffect();
+            lastNoteTime = now;
+        }
+    }
+}
+
+function triggerBeatEffect() {
+    gameContainer.classList.remove('shake-effect');
+    void gameContainer.offsetWidth; // trigger reflow
+    gameContainer.classList.add('shake-effect');
+    
+    // 背景フラッシュ
+    const flash = document.createElement('div');
+    flash.style.position = 'absolute';
+    flash.style.top = '0'; flash.style.left = '0';
+    flash.style.width = '100%'; flash.style.height = '100%';
+    flash.style.background = 'rgba(255,255,255,0.1)';
+    flash.style.pointerEvents = 'none';
+    flash.style.zIndex = '4';
+    gameContainer.appendChild(flash);
+    setTimeout(() => flash.remove(), 100);
+}
+
+// ------ End Audio Analysis ------
+
+function drawArrowNote(lane, x, y, size) {
+    const half = size / 2, quarter = size / 4;
+    ctx.save(); ctx.translate(x, y);
+    ctx.rotate([-Math.PI/2, Math.PI, 0, Math.PI/2][lane]);
+    ctx.beginPath();
+    ctx.moveTo(0, -half); ctx.lineTo(half, 0); ctx.lineTo(quarter, 0); ctx.lineTo(quarter, half); ctx.lineTo(-quarter, half); ctx.lineTo(-quarter, 0); ctx.lineTo(-half, 0);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
+    ctx.beginPath(); ctx.moveTo(0, -half + 4); ctx.lineTo(half - 8, 0); ctx.lineTo(-half + 8, 0); ctx.closePath(); ctx.fill();
+    ctx.restore();
+}
+
+function checkHit(laneIdx) {
+    const now = getCurrentTimeMs();
+    let closestNote = null, minDiff = Infinity;
+    
+    for (let n of notes) {
+        if (n.lane === laneIdx && !n.hit) {
+            const diff = Math.abs(n.time - now);
+            if (diff < minDiff) { minDiff = diff; closestNote = n; }
+        }
+    }
+    if (closestNote && minDiff < JUDGMENT_MS.MISS) {
+        let judg = ""; pts = 0;
+        if (minDiff < JUDGMENT_MS.PERFECT) { judg = "Perfect"; pts = 1000; stats.perfect++; }
+        else if (minDiff < JUDGMENT_MS.GREAT) { judg = "Great"; pts = 700; stats.great++; }
+        else if (minDiff < JUDGMENT_MS.GOOD) { judg = "Good"; pts = 400; stats.good++; }
+        if (judg) {
+            closestNote.hit = true; score += pts; combo++;
+            maxCombo = Math.max(combo, maxCombo);
+            applyVisualHit(judg, laneIdx);
+        }
+    }
+}
+
+function applyVisualHit(judg, laneIdx) {
+    scoreVal.innerText = score.toString().padStart(6, '0');
+    judgmentText.innerText = judg;
+    const isLight = document.body.classList.contains('light-mode');
+    const color = CORE_COLORS[laneIdx % CORE_COLORS.length];
+    judgmentText.style.color = color;
+    judgmentText.style.textShadow = isLight ? `0 0 10px ${color}` : `0 0 20px ${color}`;
+    judgmentText.style.transform = 'scale(1.5)';
+    setTimeout(() => judgmentText.style.transform = 'scale(1)', 100);
+    if (combo >= 3) { comboText.innerText = combo; comboText.style.opacity = "1"; }
+    for (let i = 0; i < 15; i++) {
+        particles.push({x: (laneIdx + 0.5) * (canvas.width / LANE_COUNT), y: canvas.height * HIT_LINE_Y, vx: (Math.random() - 0.5) * 18, vy: (Math.random() - 0.5) * 18, life: 1.0, color: CORE_COLORS[laneIdx % CORE_COLORS.length]});
+    }
+}
+
+function draw() {
+    pollGamepad();
+    
+    // 解析が有効ならビジュアライザーと演出を実行
+    if (isAnalysisEnabled) {
+        processAudioVisuals();
     }
     
-    // Notes
-    notes.forEach(n => {
-        if(n.hit) return;
-        const diff = n.time - now;
-        const y = hitY - (diff * cfg.speed);
+    const now = getCurrentTimeMs();
+    
+    if (gameState === 'PLAYING' && notes.length > 0 && playMode === 'VIDEO') {
+        const firstNoteTime = notes[0].time;
+        skipIntroBtn.style.display = (now < firstNoteTime - 4000) ? 'block' : 'none';
+    } else {
+        skipIntroBtn.style.display = 'none';
+    }
+
+    if (gameState !== 'PLAYING') {
+        if (gameState === 'START' || gameState === 'FINISHED') requestAnimationFrame(draw);
+        return;
+    }
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const laneWidth = canvas.width / LANE_COUNT, hitY = canvas.height * HIT_LINE_Y, config = DIFFICULTY_CONFIG[currentDiff], isLight = document.body.classList.contains('light-mode');
+    
+    // Draw Lanes
+    for (let i = 0; i < LANE_COUNT; i++) {
+        ctx.fillStyle = activeLanes[i] ? (isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.12)') : 'rgba(128,128,128,0.02)';
+        ctx.fillRect(i * laneWidth, 0, laneWidth, canvas.height);
+        ctx.strokeStyle = activeLanes[i] ? CORE_COLORS[i] : (isLight ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.15)');
+        ctx.lineWidth = 5; ctx.beginPath(); ctx.moveTo(i * laneWidth + 10, hitY); ctx.lineTo((i + 1) * laneWidth - 10, hitY); ctx.stroke();
+    }
+
+    // Draw Notes
+    notes.forEach(note => {
+        if (note.hit) return;
         
-        if(y > -50 && y < canvas.height + 50) {
-            ctx.save();
-            ctx.translate((n.lane + 0.5) * laneW, y);
-            // 矢印描画
-            ctx.rotate([-Math.PI/2, Math.PI, 0, Math.PI/2][n.lane]);
-            ctx.fillStyle = CORE_COLORS[n.lane];
-            ctx.shadowBlur = 10; ctx.shadowColor = CORE_COLORS[n.lane];
-            const sz = laneW * 0.5;
-            ctx.beginPath(); ctx.moveTo(0, -sz/2); ctx.lineTo(sz/2, 0); ctx.lineTo(-sz/2, sz/2); ctx.lineTo(-sz/2, -sz/2); ctx.fill();
-            ctx.restore();
+        let timeDiff = note.time - now;
+        const speed = config.speed; 
+        const y = hitY - (timeDiff * speed);
+
+        if (y > -100 && y < canvas.height + 100) {
+            ctx.fillStyle = CORE_COLORS[note.lane]; ctx.shadowBlur = isLight ? 12 : 20; ctx.shadowColor = CORE_COLORS[note.lane];
+            drawArrowNote(note.lane, (note.lane + 0.5) * laneWidth, y, laneWidth * 0.7);
+            ctx.shadowBlur = 0;
         }
         
         // Miss判定
-        if(diff < -JUDGMENT_MS.MISS && !n.hit) {
-            n.hit = true; combo = 0; stats.miss++;
-            updateJudge("MISS", "#888");
+        if (timeDiff < -JUDGMENT_MS.MISS && !note.hit) {
+            note.hit = true; combo = 0; stats.miss++;
+            judgmentText.innerText = "Miss"; comboText.style.opacity = "0";
+            judgmentText.style.color = "#666"; judgmentText.style.textShadow = "none";
         }
     });
-    
-    // Particles
-    particles = particles.filter(p => p.l > 0);
+
+    particles = particles.filter(p => p.life > 0);
     particles.forEach(p => {
-        ctx.globalAlpha = p.l; ctx.fillStyle = p.c;
-        ctx.beginPath(); ctx.arc(p.x, p.y, p.s * p.l, 0, Math.PI*2); ctx.fill();
-        p.x+=p.vx; p.y+=p.vy; p.l-=0.05;
+        ctx.globalAlpha = p.life; ctx.fillStyle = p.color;
+        ctx.beginPath(); ctx.arc(p.x, p.y, 4 * p.life, 0, Math.PI*2); ctx.fill();
+        p.x += p.vx; p.y += p.vy; p.vy += 0.5; p.life -= 0.025;
     });
     ctx.globalAlpha = 1.0;
-
-    // Intro skip check
-    const firstNote = notes.find(n => !n.hit);
-    if(firstNote && firstNote.time - now > 5000) {
-        document.getElementById('skip-intro-btn').style.display = 'block';
-    } else {
-        document.getElementById('skip-intro-btn').style.display = 'none';
-    }
-
-    if(ytPlayer && ytPlayer.getPlayerState() === YT.PlayerState.ENDED) endGame();
+    
+    if (playMode === 'VIDEO' && ytPlayer?.getPlayerState?.() === YT.PlayerState.ENDED) endGame(); 
     else requestAnimationFrame(draw);
 }
 
-function updateJudge(text, color) {
-    const el = document.getElementById('judgment-text');
-    el.innerText = text; el.style.color = color;
-    el.style.transform = "scale(1.5)"; setTimeout(()=>el.style.transform="scale(1)", 100);
-    const cb = document.getElementById('combo-text');
-    cb.innerText = combo; cb.style.opacity = combo > 2 ? 1 : 0;
-    document.getElementById('score-val').innerText = score.toString().padStart(6, '0');
-}
-
-/* --- Controls & Setup --- */
-function checkHit(lane) {
-    if(gameState !== 'PLAYING') return;
-    const now = (ytPlayer && ytPlayer.getCurrentTime) ? ytPlayer.getCurrentTime() * 1000 : 0;
-    const note = notes.find(n => n.lane === lane && !n.hit && Math.abs(n.time - now) < JUDGMENT_MS.MISS);
+async function startGame() {
+    const rawName = playerNameInput.value.trim() || (currentLang === 'ja' ? '名無し' : 'Anonymous');
+    localStorage.setItem('neon-hero-player-name-raw', rawName);
+    score = 0; combo = 0; maxCombo = 0; stats = { perfect: 0, great: 0, good: 0, miss: 0 };
+    particles = []; scoreVal.innerText = "000000"; judgmentText.innerText = "";
     
-    if(note) {
-        const diff = Math.abs(note.time - now);
-        note.hit = true;
-        let pts=0, txt="", col="";
-        if(diff < JUDGMENT_MS.PERFECT) { pts=1000; txt="PERFECT"; col="#0ff"; stats.perfect++; }
-        else if(diff < JUDGMENT_MS.GREAT) { pts=700; txt="GREAT"; col="#f0f"; stats.great++; }
-        else { pts=400; txt="GOOD"; col="#ff0"; stats.good++; }
-        
-        score += pts; combo++; maxCombo = Math.max(maxCombo, combo);
-        updateJudge(txt, col);
-        
-        // Explosion
-        for(let i=0; i<10; i++) particles.push({
-            x: (lane+0.5)*(canvas.width/LANE_COUNT), y: canvas.height*0.82,
-            vx:(Math.random()-0.5)*10, vy:(Math.random()-0.5)*10, l:1, s:5, c: CORE_COLORS[lane]
-        });
+    if (currentVideoId && ytPlayer) {
+        window.registerSharedVideo(currentVideoId, ytPlayer.getVideoData().title, Math.floor(currentDuration), parseInt(bpmInput.value));
+        notes = generateMap(currentDuration, currentVideoId);
+        playMode = 'VIDEO';
     }
+
+    startScreen.classList.add('hidden'); resultScreen.classList.add('hidden'); gameContainer.classList.add('is-playing');
+    
+    if (playMode === 'VIDEO' && ytPlayer) {
+        if (typeof window.recordPlay === 'function') {
+            window.recordPlay(currentVideoId, ytPlayer.getVideoData().title);
+        }
+        mediaBgContainer.innerHTML = '';
+        const playerDiv = ytPlayer.getIframe();
+        mediaBgContainer.appendChild(playerDiv);
+        ytPlayer.unMute();
+        ytPlayer.setVolume(100);
+        ytPlayer.seekTo(0);
+        ytPlayer.playVideo();
+        setTimeout(() => { if (ytPlayer) { ytPlayer.unMute(); ytPlayer.setVolume(100); } }, 500);
+    }
+    
+    gameState = 'PLAYING';
+    requestAnimationFrame(draw);
 }
 
-const keys = ['arrowleft','arrowdown','arrowup','arrowright'];
-window.addEventListener('keydown', e => {
-    const i = keys.indexOf(e.key.toLowerCase());
-    if(i>=0 && !activeLanes[i]) { activeLanes[i]=true; document.getElementById('btn-'+i).classList.add('active'); checkHit(i); }
-});
-window.addEventListener('keyup', e => {
-    const i = keys.indexOf(e.key.toLowerCase());
-    if(i>=0) { activeLanes[i]=false; document.getElementById('btn-'+i).classList.remove('active'); }
+// Hybrid Analysis Toggle
+toggleAnalysisBtn.addEventListener('click', async () => {
+    if (isAnalysisEnabled) {
+        // Stop
+        if (analysisStream) {
+            analysisStream.getTracks().forEach(track => track.stop());
+            analysisStream = null;
+        }
+        isAnalysisEnabled = false;
+        toggleAnalysisBtn.classList.remove('active');
+        toggleAnalysisBtn.innerText = "🎙️ PC限定: リアルタイム解析演出をONにする";
+    } else {
+        // Start
+        await setupAudioAnalysis();
+    }
 });
 
-/* --- UI Logic --- */
-document.getElementById('start-btn').addEventListener('click', () => {
-    document.getElementById('start-screen').classList.add('hidden');
-    document.getElementById('game-container').classList.add('is-playing');
-    gameState = 'PLAYING';
-    notes = generateMap(currentDuration);
-    score=0; combo=0; maxCombo=0; stats={perfect:0, great:0, good:0, miss:0};
-    ytPlayer.seekTo(0); ytPlayer.playVideo();
+async function endGame() {
+    gameState = 'FINISHED';
+    
+    // 解析は停止せず、次回のプレイのために維持しても良いが、一応停止する
+    if (isAnalysisEnabled && analysisStream) {
+       // Optional: keep it running for seamless retry? 
+       // For now, let's keep it running if the user wants to retry immediately.
+       // But strictly speaking, we should probably stop it to release resources.
+       // Let's stop it for safety.
+       analysisStream.getTracks().forEach(track => track.stop());
+       analysisStream = null;
+       isAnalysisEnabled = false;
+       toggleAnalysisBtn.classList.remove('active');
+       toggleAnalysisBtn.innerText = "🎙️ PC限定: リアルタイム解析演出をONにする";
+    }
+    
+    resultScreen.classList.remove('hidden'); gameContainer.classList.remove('is-playing');
+    document.getElementById('final-score').innerText = score.toLocaleString();
+    document.getElementById('stats-detail').innerHTML = `<span style="color:var(--neon-cyan)">${uiText.stats_perfect}: ${stats.perfect}</span> | <span style="color:var(--neon-pink)">${uiText.stats_great}: ${stats.great}</span> | <span style="color:var(--neon-lime)">${uiText.stats_good}: ${stats.good}</span><br>${uiText.stats_combo}: ${maxCombo} | LEVEL: ${currentDiff.toUpperCase()}`;
+    registerScoreBtn.disabled = false;
+    if(playMode === 'VIDEO') updateRankingDisplay(currentVideoId, currentDiff, resultRankingList);
+}
+
+registerScoreBtn.addEventListener('click', async () => {
+    registerScoreBtn.disabled = true;
+    const parsed = await parsePlayerName(playerNameInput.value.trim() || "");
+    await window.saveGameScore({ playerName: parsed.name, playerTrip: parsed.trip, comment: playerCommentInput.value.trim() || "", score: score, videoId: currentVideoId, difficulty: currentDiff });
+    updateRankingDisplay(currentVideoId, currentDiff, resultRankingList);
+});
+
+async function updateRankingDisplay(videoId, difficulty, listElement, containerElement = null) {
+    if (!videoId) return;
+    listElement.innerHTML = '<div class="loader"></div>';
+    if (containerElement) containerElement.classList.remove('hidden');
+    const topScores = await window.fetchRankings(videoId, difficulty);
+    if (topScores.length === 0) { listElement.innerHTML = `<div style="text-align:center; font-size:12px; color:#64748b; padding:10px;">${uiText.msg_no_records}</div>`; return; }
+    listElement.innerHTML = topScores.map((item, index) => `<div class="ranking-item"><div class="ranking-header"><span class="ranking-rank">${index + 1}</span><span class="ranking-name">${item.playerName}<span class="ranking-trip">${item.playerTrip || ""}</span></span><span class="ranking-score">${item.score.toLocaleString()}</span></div>${item.comment ? `<div class="ranking-comment">"${item.comment}"</div>` : ""}</div>`).join('');
+}
+
+window.addEventListener('keydown', (e) => handleKeyDown(e.key));
+window.addEventListener('keyup', (e) => handleKeyUp(e.key));
+document.querySelectorAll('.touch-btn').forEach(btn => {
+    btn.addEventListener('touchstart', (e) => { e.preventDefault(); handleKeyDown(btn.dataset.key); });
+    btn.addEventListener('touchend', (e) => { e.preventDefault(); handleKeyUp(btn.dataset.key); });
+});
+startBtn.addEventListener('click', startGame);
+retryBtn.addEventListener('click', () => location.reload());
+
+function resize() { 
+    canvas.width = gameContainer.clientWidth; 
+    canvas.height = gameContainer.clientHeight; 
+    visualizerCanvas.width = gameContainer.clientWidth;
+    visualizerCanvas.height = 300; // Increase for background effect
+}
+window.addEventListener('resize', resize); resize();
+
+window.addEventListener('DOMContentLoaded', () => {
+    toggleAnalysisBtn.style.display = 'none'; // 動画ロード後に表示
+    const params = new URLSearchParams(window.location.search);
+    const wait = setInterval(() => {
+        if (typeof YT !== 'undefined' && YT.Player && typeof window.fetchSharedVideos === 'function') { 
+            const vid = params.get('v');
+            if (vid) { ytUrlInput.value = `https://www.youtube.com/watch?v=${vid}`; loadYoutube(vid); }
+            clearInterval(wait); 
+        }
+    }, 500);
     requestAnimationFrame(draw);
 });
 
-document.getElementById('yt-load-btn').addEventListener('click', () => {
-    const url = document.getElementById('yt-url').value;
-    const vid = url.match(/v=([^&]+)/)?.[1] || url.match(/youtu\.be\/([^?]+)/)?.[1];
-    if(vid) loadVideo(vid);
-});
-
-function loadVideo(vid) {
-    currentVideoId = vid;
-    document.getElementById('preview-content').innerHTML = '<div id="yt-placeholder"></div>';
-    ytPlayer = new YT.Player('yt-placeholder', {
-        videoId: vid, width: '100%', height: '100%',
-        playerVars: { autoplay: 1, controls: 0, disablekb: 1 },
-        events: {
-            onReady: e => {
-                currentDuration = e.target.getDuration();
-                document.getElementById('start-btn').disabled = false;
-                notes = generateMap(currentDuration);
-                updateRankingUI();
-                window.addVideo(vid, ytPlayer.getVideoData().title, currentDuration);
-            }
-        }
-    });
-}
-
-function endGame() {
-    gameState = 'FINISHED';
-    document.getElementById('result-screen').classList.remove('hidden');
-    document.getElementById('final-score').innerText = score;
-    document.getElementById('stats-detail').innerHTML = `PERFECT: ${stats.perfect} <br> MAX COMBO: ${maxCombo}`;
-    window.getRankings(currentVideoId, currentDiff).then(renderResultRanking);
-}
-
-document.getElementById('retry-btn').addEventListener('click', () => location.reload());
-document.getElementById('skip-intro-btn').addEventListener('click', () => {
-    const n = notes.find(n => !n.hit);
-    if(n) ytPlayer.seekTo(n.time/1000 - 2, true);
-});
-
-document.getElementById('diff-selector').addEventListener('click', e => {
-    if(e.target.dataset.diff) {
-        document.querySelectorAll('.diff-btn').forEach(b=>b.classList.remove('active'));
-        e.target.classList.add('active');
-        currentDiff = e.target.dataset.diff;
-        if(currentDuration) notes = generateMap(currentDuration);
+if (!CanvasRenderingContext2D.prototype.roundRect) {
+    CanvasRenderingContext2D.prototype.roundRect = function (x, y, w, h, r) {
+        if (w < 2 * r) r = w / 2; if (h < 2 * r) r = h / 2;
+        this.moveTo(x + r, y); this.arcTo(x + w, y, x + w, y + h, r); this.arcTo(x + w, y + h, x, y + h, r); this.arcTo(x, y + h, x, y, r); this.arcTo(x, y, x + w, y, r);
+        this.closePath(); return this;
     }
-});
-
-/* --- Ranking & Lib --- */
-async function updateRankingUI() {
-    const list = document.getElementById('menu-ranking-list');
-    const data = await window.getRankings(currentVideoId, currentDiff);
-    list.innerHTML = data.map((d,i)=>`<div class="ranking-item"><span class="ranking-rank">${i+1}</span><span class="ranking-name">${d.playerName}</span><span class="ranking-score">${d.score}</span></div>`).join('');
-}
-function renderResultRanking(data) { /* Similar logic for result screen */ }
-
-document.getElementById('open-library-btn').addEventListener('click', async () => {
-    document.getElementById('library-modal').classList.add('is-visible');
-    const vids = await window.getVideos();
-    document.getElementById('shared-list-full').innerHTML = vids.map(v => 
-        `<div class="shared-item-full" onclick="document.getElementById('yt-url').value='https://youtu.be/${v.videoId}'; document.getElementById('yt-load-btn').click(); document.getElementById('library-modal').classList.remove('is-visible')">
-            <div class="thumbnail-container"><img src="https://img.youtube.com/vi/${v.videoId}/mqdefault.jpg" class="shared-thumbnail"></div>
-            <div><div style="font-weight:900; font-size:13px;">${v.title}</div><div style="font-size:10px; opacity:0.6;">${Math.floor(v.duration/60)}:${(v.duration%60).toString().padStart(2,'0')}</div></div>
-        </div>`
-    ).join('');
-});
-document.getElementById('close-library-btn').addEventListener('click', ()=>document.getElementById('library-modal').classList.remove('is-visible'));
-
-function showToast(msg) {
-    const t = document.createElement('div'); t.className='toast'; t.innerText=msg;
-    document.body.appendChild(t); setTimeout(()=>t.remove(), 3000);
 }
 </script>
 </body>
