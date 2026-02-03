@@ -1150,6 +1150,9 @@ async function setupAudioAnalysis() {
             return false;
         }
 
+        // --- わかりやすい案内を追加 ---
+        alert("【重要：共有画面の選び方】\n\n1. 出てきたウィンドウの「Chrome タブ」を選びます。\n2. リストの中から「dma-cmyk.github.io」または「ネオン・ヒーロー」を選択します。\n3. 「タブの音声も共有する」をONにして「共有」ボタンを押してください！");
+
         const stream = await navigator.mediaDevices.getDisplayMedia({
             video: true,
             audio: {
