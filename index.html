@@ -11,7 +11,8 @@
             /* ダークモード: ディープ・スペース・ネオン */
             --bg-color: #03030b;
             --container-bg: radial-gradient(circle at top, #101030 0%, #03030b 100%);
-            --overlay-bg: rgba(5, 5, 20, 0.85);
+            /* 背景の透過度を上げて、裏のガイドを見やすく調整 */
+            --overlay-bg: rgba(5, 5, 20, 0.75);
             --text-color: #ffffff;
             --input-bg: rgba(255, 255, 255, 0.05);
             --panel-bg: rgba(255, 255, 255, 0.03);
@@ -31,7 +32,7 @@
         body.light-mode {
             --bg-color: #f0f4f8;
             --container-bg: linear-gradient(135deg, #eef2ff 0%, #fdeff9 50%, #e0f2fe 100%);
-            --overlay-bg: rgba(255, 255, 255, 0.75);
+            --overlay-bg: rgba(255, 255, 255, 0.65);
             --text-color: #2d3748;
             --input-bg: rgba(255, 255, 255, 0.9);
             --panel-bg: rgba(255, 255, 255, 0.5);
@@ -163,7 +164,7 @@
         #preview-placeholder { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: #64748b; font-size: 14px; text-align: center; font-weight: 800; }
         
         #preview-content { width: 100%; height: 100%; position: relative; overflow: hidden; pointer-events: auto; }
-        #preview-content iframe { position: absolute; top: 0; left: 0; width: 100% !important; height: 100% !important; border: none; }
+        #preview-content iframe, #preview-content video { position: absolute; top: 0; left: 0; width: 100% !important; height: 100% !important; border: none; object-fit: cover; }
 
         .ranking-container { width: 100%; max-width: 420px; background: var(--panel-bg); border-radius: 24px; padding: 25px; margin-bottom: 30px; border: 1.5px solid var(--panel-border); box-sizing: border-box; box-shadow: 0 10px 30px var(--shadow-color); flex-shrink: 0; }
         .ranking-item { display: flex; flex-direction: column; padding: 14px 0; border-bottom: 1px solid rgba(128,128,128,0.15); }
@@ -249,11 +250,13 @@
 <div id="game-container">
     <div class="grid-bg"><div class="grid-bg-inner"></div></div>
     <div id="media-bg-container">
-        <!-- ローカル再生用のHTML5 Video (非表示/表示切り替え) -->
-        <video id="local-video-player" playsinline webkit-playsinline></video>
+        <!-- ゲームプレイ中、ローカル動画はここに移動してくる -->
     </div>
     <canvas id="gameCanvas"></canvas>
     
+    <!-- プレビューと背景を行き来するローカル動画プレイヤー -->
+    <video id="local-video-player" playsinline webkit-playsinline></video>
+
     <button id="theme-toggle" title="Switch Theme">🌙</button>
     <button id="skip-intro-btn" data-i18n="btn_skip_intro">イントロをスキップ</button>
 
@@ -306,10 +309,7 @@
             <span class="input-label" data-i18n="label_map_settings">譜面生成設定 (AUTO MAP)</span>
             <div class="bpm-controls">
                 <div class="control-item">
-                    <span class="setting-sub-label">
-                        BPM
-                        <a id="search-bpm-link" href="#" style="color:var(--neon-cyan); text-decoration:none; margin-left:4px; font-size:10px; border:1px solid var(--neon-cyan); padding:1px 4px; border-radius:4px;">🔍検索</a>
-                    </span>
+                    <span class="setting-sub-label">BPM</span>
                     <div class="control-input-wrapper">
                         <button class="adj-btn minus" data-target="bpm" data-val="-1">-</button>
                         <input type="number" id="bpm-input" value="120" min="40" max="300">
@@ -749,6 +749,10 @@ let uiText = translations.en;
 let detectedPeaks = []; // For Local Auto Map
 let beatGuideActive = true;
 
+// Web Audio API for Visualizer
+let audioCtx, analyser, sourceNode;
+let isAudioFile = false;
+
 // TAP BPM Logic
 let tapTimes = []; // システム時刻（BPM計算用）
 let tapVideoTimes = []; // 動画内時刻（オフセット計算用）
@@ -898,10 +902,10 @@ beatGuideBtn.addEventListener('click', () => {
     beatGuideActive = !beatGuideActive;
     if (beatGuideActive) {
         beatGuideBtn.classList.add('active');
-        beatGuideBtn.innerHTML = "GUIDE<br>ON";
+        beatGuideBtn.innerHTML = "<span>👁️</span> GUIDE ON";
     } else {
         beatGuideBtn.classList.remove('active');
-        beatGuideBtn.innerHTML = "GUIDE<br>OFF";
+        beatGuideBtn.innerHTML = "GUIDE OFF";
     }
 });
 
@@ -1094,20 +1098,45 @@ localFileInput.addEventListener('change', async (e) => {
     localAnalyzeStatus.innerText = "音声解析中...";
     startBtn.disabled = true;
     
+    // Check file type for Visualizer
+    isAudioFile = file.type.startsWith('audio/');
+    
     // Switch Players
-    previewContent.innerHTML = ''; // Hide YT
+    previewContent.innerHTML = ''; // Clear existing
     previewPlaceholder.classList.add('hidden');
+    
+    // Move local player to preview
+    previewContent.appendChild(localVideoPlayer);
     localVideoPlayer.style.display = 'block';
     
     // Set Video Source
     const url = URL.createObjectURL(file);
     localVideoPlayer.src = url;
     
-    // Web Audio Analysis (Pre-analysis)
+    // Setup Real-time Visualizer Audio Context
+    if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    
+    if (sourceNode) {
+        // Disconnect old source if exists to avoid errors (though createMediaElementSource usually handles same element okay, strict re-creation might fail)
+        // Ideally we reuse sourceNode if element is same.
+    } else {
+        sourceNode = audioCtx.createMediaElementSource(localVideoPlayer);
+        analyser = audioCtx.createAnalyser();
+        analyser.fftSize = 256;
+        sourceNode.connect(analyser);
+        analyser.connect(audioCtx.destination);
+    }
+    
+    localVideoPlayer.play().catch(e => console.log("Auto-play prevented"));
+
+    // Web Audio Analysis (Pre-analysis for Map Generation)
     try {
         const arrayBuffer = await file.arrayBuffer();
-        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+        // Decode in separate context or same? Decode is heavy, better new buffer
+        const decodeCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const audioBuffer = await decodeCtx.decodeAudioData(arrayBuffer);
         
         currentDuration = audioBuffer.duration;
         detectedPeaks = analyzeAudioBuffer(audioBuffer); // Get raw peaks
@@ -1426,6 +1455,63 @@ function applyVisualHit(judg, laneIdx) {
     }
 }
 
+function drawVisualizer() {
+    if (!analyser || !playMode === 'LOCAL') return;
+    
+    const bufferLength = analyser.frequencyBinCount;
+    const dataArray = new Uint8Array(bufferLength);
+    analyser.getByteFrequencyData(dataArray);
+    
+    // Central Circle Pulse
+    let avg = 0;
+    for(let i = 0; i < bufferLength; i++) avg += dataArray[i];
+    avg /= bufferLength;
+    
+    const cx = canvas.width / 2;
+    const cy = canvas.height / 2;
+    
+    // Draw background wave
+    ctx.beginPath();
+    ctx.moveTo(0, canvas.height);
+    for (let i = 0; i < bufferLength; i++) {
+        const x = (i / bufferLength) * canvas.width;
+        const y = canvas.height - (dataArray[i] / 255) * 200;
+        ctx.lineTo(x, y);
+    }
+    ctx.lineTo(canvas.width, canvas.height);
+    ctx.fillStyle = "rgba(0, 242, 255, 0.1)";
+    ctx.fill();
+
+    // Draw circular spectrum
+    const radius = 100 + (avg / 2); // Pulse size
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+    ctx.strokeStyle = `rgba(255, 0, 122, ${avg/255})`;
+    ctx.lineWidth = 5;
+    ctx.stroke();
+    
+    // Rays
+    const bars = 60;
+    const step = (Math.PI * 2) / bars;
+    for (let i = 0; i < bars; i++) {
+        const val = dataArray[i % bufferLength] / 255;
+        const barLen = val * 100;
+        const angle = step * i;
+        
+        const x1 = cx + Math.cos(angle) * radius;
+        const y1 = cy + Math.sin(angle) * radius;
+        const x2 = cx + Math.cos(angle) * (radius + barLen);
+        const y2 = cy + Math.sin(angle) * (radius + barLen);
+        
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.strokeStyle = `hsla(${i * 6}, 100%, 50%, 0.5)`;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+    }
+}
+
 function draw() {
     pollGamepad();
     const now = getCurrentTimeMs();
@@ -1435,11 +1521,25 @@ function draw() {
     } else {
         skipIntroBtn.style.display = 'none';
     }
-    if (gameState !== 'PLAYING') {
+
+    // 修正: ゲーム中(PLAYING) または スタート画面でのプレビュー再生中 なら描画する
+    const isPreviewing = (gameState === 'START' && playMode !== 'NONE' && (
+        (playMode === 'VIDEO' && ytPlayer && ytPlayer.getPlayerState && ytPlayer.getPlayerState() === YT.PlayerState.PLAYING) || 
+        (playMode === 'LOCAL' && localVideoPlayer && !localVideoPlayer.paused)
+    ));
+
+    if (gameState !== 'PLAYING' && !isPreviewing) {
         if (gameState === 'START' || gameState === 'FINISHED') requestAnimationFrame(draw);
         return;
     }
+
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // ビジュアライザー描画 (音声ファイルのみ、または常に表示しても綺麗)
+    if (playMode === 'LOCAL') {
+        drawVisualizer();
+    }
+
     const laneWidth = canvas.width / LANE_COUNT, hitY = canvas.height * HIT_LINE_Y, config = DIFFICULTY_CONFIG[currentDiff], isLight = document.body.classList.contains('light-mode');
     
     // Draw Lanes
@@ -1450,29 +1550,34 @@ function draw() {
         ctx.lineWidth = 5; ctx.beginPath(); ctx.moveTo(i * laneWidth + 10, hitY); ctx.lineTo((i + 1) * laneWidth - 10, hitY); ctx.stroke();
     }
 
-    // Draw Beat Guide
+    // Draw Beat Guide (判定ラインを通過するバーを表示)
     if (beatGuideActive) {
         const bpm = parseInt(bpmInput.value) || 120;
         const offset = parseInt(offsetInput.value) || 0;
         const msPerBeat = 60000 / bpm;
         
-        // Calculate beat position based on time
-        // We want a bar that passes the hit line exactly on the beat
-        // similar to a note but purely visual
-        
-        // Find next beat time relative to now
+        // オフセットからの経過時間
         const timeSinceOffset = now - offset;
+        // 現在の拍数
         const currentBeatIndex = Math.floor(timeSinceOffset / msPerBeat);
         
-        // Draw upcoming visual guides
-        for(let i = 0; i < 4; i++) {
+        // 未来の4拍分を描画
+        for(let i = 0; i < 8; i++) { // 描画範囲を少し広げる
             const beatTime = offset + ((currentBeatIndex + 1 + i) * msPerBeat);
             const timeDiff = beatTime - now;
             const y = hitY - (timeDiff * config.speed);
             
+            // 画面内にある場合のみ描画
             if (y > -50 && y < canvas.height) {
-                ctx.fillStyle = "rgba(255, 255, 255, 0.5)";
-                ctx.fillRect(0, y - 2, canvas.width, 4); // Thin white bar across screen
+                ctx.fillStyle = isLight ? "rgba(0, 0, 0, 0.4)" : "rgba(255, 255, 255, 0.6)";
+                ctx.fillRect(0, y - 2, canvas.width, 4); // 画面を横切るバー
+                
+                // GUIDEの文字を表示（オプション）
+                if (i === 0) {
+                    ctx.font = "10px sans-serif";
+                    ctx.fillStyle = isLight ? "rgba(0,0,0,0.5)" : "rgba(255,255,255,0.5)";
+                    ctx.fillText("GUIDE", 5, y - 5);
+                }
             }
         }
     }
@@ -1486,10 +1591,14 @@ function draw() {
             drawArrowNote(note.lane, (note.lane + 0.5) * laneWidth, y, laneWidth * 0.7, note.type);
             ctx.shadowBlur = 0;
         }
-        if (timeDiff < -JUDGMENT_MS.MISS && !note.hit) {
-            note.hit = true; combo = 0; stats.miss++;
-            judgmentText.innerText = "Miss"; comboText.style.opacity = "0";
-            judgmentText.style.color = "#666"; judgmentText.style.textShadow = "none";
+        
+        // Miss判定はゲームプレイ中のみ行う
+        if (gameState === 'PLAYING') {
+            if (timeDiff < -JUDGMENT_MS.MISS && !note.hit) {
+                note.hit = true; combo = 0; stats.miss++;
+                judgmentText.innerText = "Miss"; comboText.style.opacity = "0";
+                judgmentText.style.color = "#666"; judgmentText.style.textShadow = "none";
+            }
         }
     });
     
@@ -1507,7 +1616,9 @@ function draw() {
     if (playMode === 'VIDEO' && ytPlayer?.getPlayerState?.() === YT.PlayerState.ENDED) isEnded = true;
     if (playMode === 'LOCAL' && localVideoPlayer.ended) isEnded = true;
 
-    if (isEnded) endGame(); else requestAnimationFrame(draw);
+    // プレビュー中はエンドゲーム処理をしない
+    if (isEnded && gameState === 'PLAYING') endGame(); 
+    else requestAnimationFrame(draw);
 }
 
 async function startGame() {
@@ -1529,7 +1640,7 @@ async function startGame() {
             window.recordPlay(currentVideoId, ytPlayer.getVideoData().title);
         }
         mediaBgContainer.innerHTML = '';
-        mediaBgContainer.appendChild(localVideoPlayer); // Append hidden local player back
+        mediaBgContainer.appendChild(localVideoPlayer); // Append hidden local player back to keep tree clean
         mediaBgContainer.appendChild(ytPlayer.getIframe());
         
         ytPlayer.unMute();
@@ -1539,8 +1650,11 @@ async function startGame() {
         setTimeout(() => { if (ytPlayer) { ytPlayer.unMute(); ytPlayer.setVolume(100); } }, 500);
 
     } else if (playMode === 'LOCAL' && localVideoPlayer) {
-        // Show Local Video
-        localVideoPlayer.style.display = 'block';
+        // Move to background for gameplay
+        mediaBgContainer.innerHTML = '';
+        mediaBgContainer.appendChild(localVideoPlayer);
+        
+        // Show Local Video (even for audio, visualizer handles visuals)
         localVideoPlayer.currentTime = 0;
         localVideoPlayer.volume = 1.0;
         localVideoPlayer.play();
@@ -1562,6 +1676,10 @@ async function endGame() {
         registerScoreBtn.innerText = "ランキング登録不可";
         localScoreMsg.style.display = 'block';
         menuRankingContainer.classList.add('hidden');
+        
+        // Return player to preview box for continuity
+        previewContent.appendChild(localVideoPlayer);
+        localVideoPlayer.style.display = 'block';
     } else {
         registerScoreBtn.disabled = false;
         localScoreMsg.style.display = 'none';
