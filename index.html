@@ -1344,10 +1344,15 @@ async function processLocalFile(file, savedName = null) {
         currentDuration = audioBuffer.duration;
         detectedPeaks = analyzeAudioBuffer(audioBuffer); // Get raw peaks
         
+        // Auto-detect BPM and Offset for Guide
+        const autoParams = detectBPMAndOffset(detectedPeaks);
+        bpmInput.value = autoParams.bpm;
+        offsetInput.value = autoParams.offset;
+
         // Generate Map
         notes = generateMapFromPeaks(detectedPeaks, currentDuration);
         
-        localAnalyzeStatus.innerText = `解析完了: ${notes.length} NOTES`;
+        localAnalyzeStatus.innerText = `解析完了: ${notes.length} NOTES (BPM:${autoParams.bpm})`;
         localAnalyzeStatus.style.color = "var(--neon-lime)";
         startBtn.disabled = false;
         
@@ -1391,6 +1396,59 @@ function analyzeAudioBuffer(audioBuffer) {
         }
     }
     return peaks;
+}
+
+function detectBPMAndOffset(peaks) {
+    if (peaks.length < 10) return { bpm: 120, offset: 0 };
+
+    // 1. Calculate intervals between adjacent peaks
+    const intervals = [];
+    for (let i = 1; i < peaks.length; i++) {
+        const diff = peaks[i].time - peaks[i-1].time;
+        // Filter extremely short intervals (trills/noise) and very long ones
+        if (diff > 200 && diff < 1000) {
+            intervals.push(diff);
+        }
+    }
+
+    if (intervals.length === 0) return { bpm: 120, offset: 0 };
+
+    // 2. Find most common interval (simple histogram)
+    // Round to nearest 10ms to group similar intervals
+    const histogram = {};
+    let maxCount = 0;
+    let bestInterval = 500; // Default 120BPM
+
+    intervals.forEach(interval => {
+        const rounded = Math.round(interval / 10) * 10;
+        histogram[rounded] = (histogram[rounded] || 0) + 1;
+        if (histogram[rounded] > maxCount) {
+            maxCount = histogram[rounded];
+            bestInterval = rounded;
+        }
+    });
+
+    // 3. Calculate BPM
+    let bpm = Math.round(60000 / bestInterval);
+
+    // Adjust BPM to reasonable range (e.g. 70-190)
+    // If detected as double time (e.g. 8th notes dominant), halve it or double it
+    while (bpm > 190) bpm = Math.round(bpm / 2);
+    while (bpm < 70) bpm = Math.round(bpm * 2);
+
+    // 4. Calculate Offset
+    // Use the first strong peak
+    let firstStrongPeak = peaks.find(p => p.vol > 0.5) || peaks[0];
+    let offset = 0;
+    if (firstStrongPeak) {
+        // Offset is simply the start time of the first note within the beat grid
+        // We assume the first strong note is "on beat"
+        const msPerBeat = 60000 / bpm;
+        // Calculate remainder to keep offset small (within 1 beat)
+        offset = Math.round(firstStrongPeak.time % msPerBeat);
+    }
+
+    return { bpm, offset };
 }
 
 function generateMapFromPeaks(peaks, duration) {
