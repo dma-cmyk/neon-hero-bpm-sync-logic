@@ -702,7 +702,8 @@ const translations = {
         msg_reset_done: "初期設定に戻しました",
         label_map_settings: "譜面生成設定 (AUTO MAP)",
         label_sync_beat: "強拍を強調 (Sync Beat)",
-        msg_tap_instruction: "※ YouTubeモード: 動画再生中にTAPまたはGUIDEを見ながら調整。<br>※ ローカルモード: 音声を自動解析して生成します。"
+        msg_tap_instruction: "※ YouTubeモード: 動画再生中にTAPまたはGUIDEを見ながら調整。<br>※ ローカルモード: 音声を自動解析して生成します。",
+        btn_load_more: "もっと読み込む"
     },
     en: {
         score_label: "SCORE",
@@ -749,7 +750,8 @@ const translations = {
         msg_reset_done: "Keys reset to default",
         label_map_settings: "AUTO MAP SETTINGS",
         label_sync_beat: "Emphasize Strong Beats",
-        msg_tap_instruction: "* YouTube: Adjust using Tap or Guide. <br>* Local: Auto-analyzed generation."
+        msg_tap_instruction: "* YouTube: Adjust using Tap or Guide. <br>* Local: Auto-analyzed generation.",
+        btn_load_more: "LOAD MORE"
     }
 };
 
@@ -805,6 +807,9 @@ const localScoreMsg = document.getElementById('local-score-msg');
 const saveLocalBtn = document.getElementById('save-local-btn');
 
 let currentLocalFile = null;
+let libraryLimit = 50;
+let currentLibrarySortedList = [];
+let currentLibraryRenderedCount = 0;
 
 const LANE_COUNT = 4;
 const JUDGMENT_MS = { PERFECT: 60, GREAT: 110, GOOD: 160, MISS: 250 };
@@ -1094,7 +1099,7 @@ async function parsePlayerName(rawName) {
 
 openLibraryBtn.addEventListener('click', () => {
     libraryModal.classList.add('is-visible');
-    renderLibrary('new');
+    loadLibraryData('new');
 });
 
 closeLibraryBtn.addEventListener('click', () => libraryModal.classList.remove('is-visible'));
@@ -1104,7 +1109,7 @@ libraryTabs.addEventListener('click', (e) => {
     if (!btn) return;
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
-    renderLibrary(btn.dataset.mode);
+    loadLibraryData(btn.dataset.mode);
 });
 
 diffSelector.addEventListener('click', (e) => {
@@ -1123,8 +1128,9 @@ diffSelector.addEventListener('click', (e) => {
     }
 });
 
-async function renderLibrary(mode) {
+async function loadLibraryData(mode) {
     sharedListFull.innerHTML = '<div class="loader"></div>';
+    currentLibraryRenderedCount = 0;
     
     // Local Files handling
     if (mode === 'local') {
@@ -1137,7 +1143,10 @@ async function renderLibrary(mode) {
             // Sort by new
             files.sort((a, b) => b.timestamp - a.timestamp);
             
-            sharedListFull.innerHTML = files.map(file => `
+            sharedListFull.innerHTML = '';
+            
+            // Render all local files (assuming local list isn't huge, but could paginate here too if needed)
+            const html = files.map(file => `
                 <div class="shared-item-full local-item" data-id="${file.id}">
                     <div class="thumbnail-container" style="display:flex; align-items:center; justify-content:center; background:#111;">
                         <span style="font-size:24px;">📁</span>
@@ -1150,27 +1159,8 @@ async function renderLibrary(mode) {
                 </div>
             `).join('');
             
-            // Add click handlers for local items
-            document.querySelectorAll('.local-item').forEach(item => {
-                item.addEventListener('click', async (e) => {
-                    if (e.target.closest('.delete-local-btn')) return; // Ignore delete button click
-                    const id = parseInt(item.dataset.id);
-                    await loadLocalFileFromDB(id);
-                    libraryModal.classList.remove('is-visible');
-                });
-            });
-            
-            // Add delete handlers
-            document.querySelectorAll('.delete-local-btn').forEach(btn => {
-                btn.addEventListener('click', async (e) => {
-                    e.stopPropagation();
-                    if(confirm('削除しますか？')) {
-                        const id = parseInt(btn.dataset.id);
-                        await dbHelper.delete(id);
-                        renderLibrary('local'); // Refresh
-                    }
-                });
-            });
+            sharedListFull.insertAdjacentHTML('beforeend', html);
+            attachLibraryEvents();
             return;
         } catch (e) {
             console.error(e);
@@ -1181,6 +1171,7 @@ async function renderLibrary(mode) {
 
     if (typeof window.fetchSharedVideos !== 'function' || typeof window.fetchPlayLogs !== 'function') return;
 
+    // Fetch all needed data
     const [videos, logs] = await Promise.all([window.fetchSharedVideos(), window.fetchPlayLogs()]);
     let displayList = [];
     const now = Date.now();
@@ -1213,12 +1204,29 @@ async function renderLibrary(mode) {
         }).filter(v => v !== null).sort((a, b) => b.playCount - a.playCount);
     }
 
+    currentLibrarySortedList = displayList;
+    sharedListFull.innerHTML = '';
+    
     if (displayList.length === 0) {
         sharedListFull.innerHTML = `<div style="text-align:center; padding:20px; opacity:0.5;">${uiText.msg_no_records}</div>`;
         return;
     }
+    
+    appendLibraryItems();
+}
 
-    sharedListFull.innerHTML = displayList.map(v => {
+function appendLibraryItems() {
+    const container = sharedListFull;
+    
+    // Remove old load more button if exists
+    const oldBtn = document.getElementById('lib-load-more');
+    if(oldBtn) oldBtn.remove();
+    
+    const start = currentLibraryRenderedCount;
+    const end = Math.min(currentLibraryRenderedCount + 50, currentLibrarySortedList.length);
+    const items = currentLibrarySortedList.slice(start, end);
+    
+    const html = items.map(v => {
         const thumb = v.provider === 'tiktok' ? 'https://www.tiktok.com/favicon.ico' : `https://img.youtube.com/vi/${v.videoId}/mqdefault.jpg`;
         return `
         <div class="shared-item-full" data-id="${v.videoId}">
@@ -1233,14 +1241,56 @@ async function renderLibrary(mode) {
         </div>
     `}).join('');
     
-    document.querySelectorAll('.shared-item-full:not(.local-item)').forEach(item => {
-        item.addEventListener('click', () => {
-            ytUrlInput.value = `https://www.youtube.com/watch?v=${item.dataset.id}`;
-            loadYoutube(item.dataset.id);
-            libraryModal.classList.remove('is-visible');
-        });
-    });
+    container.insertAdjacentHTML('beforeend', html);
+    currentLibraryRenderedCount = end;
+    
+    // Add Load More Button if there are more items
+    if (currentLibraryRenderedCount < currentLibrarySortedList.length) {
+        const btnHtml = `<button id="lib-load-more" class="btn" style="width:90%; margin:20px auto; background:var(--panel-bg); border:1px solid var(--neon-cyan); font-size:14px;">${uiText.btn_load_more}</button>`;
+        container.insertAdjacentHTML('beforeend', btnHtml);
+        document.getElementById('lib-load-more').addEventListener('click', appendLibraryItems);
+    }
+    
+    attachLibraryEvents();
 }
+
+function attachLibraryEvents() {
+    // Re-attach click events (using event delegation would be better but keeping consistency with existing style)
+    // Remove old listeners? The easiest way is to clone and replace or just add new ones carefully.
+    // For simplicity in this structure, we'll just re-query and re-bind.
+    // Note: Since we are appending, we should only bind to NEW items or unbind first.
+    // Simpler approach: Event Delegation on parent.
+}
+
+// Event Delegation for Library Items
+sharedListFull.addEventListener('click', async (e) => {
+    // Handle Shared Item Click
+    const sharedItem = e.target.closest('.shared-item-full');
+    if (sharedItem) {
+        if (sharedItem.classList.contains('local-item')) {
+             if (e.target.closest('.delete-local-btn')) return; // Ignore delete button
+             const id = parseInt(sharedItem.dataset.id);
+             await loadLocalFileFromDB(id);
+             libraryModal.classList.remove('is-visible');
+        } else {
+            const vidId = sharedItem.dataset.id;
+            ytUrlInput.value = `https://www.youtube.com/watch?v=${vidId}`;
+            loadYoutube(vidId);
+            libraryModal.classList.remove('is-visible');
+        }
+    }
+    
+    // Handle Local Delete
+    const delBtn = e.target.closest('.delete-local-btn');
+    if (delBtn) {
+        if(confirm('削除しますか？')) {
+            const id = parseInt(delBtn.dataset.id);
+            await dbHelper.delete(id);
+            loadLibraryData('local'); // Refresh
+        }
+    }
+});
+
 
 // Local File Save/Load Logic
 saveLocalBtn.addEventListener('click', async () => {
