@@ -75,7 +75,6 @@
             background: var(--container-bg);
             box-shadow: 0 30px 60px var(--shadow-color);
             overflow: hidden; display: flex; flex-direction: column; border-radius: 20px;
-            transition: transform 0.1s; /* 画面揺れ用 */
         }
 
         .grid-bg {
@@ -96,6 +95,8 @@
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             z-index: 2; pointer-events: auto; opacity: 0; transition: opacity 0.8s ease; overflow: hidden;
         }
+        
+        #local-video-player { width: 100%; height: 100%; object-fit: cover; display: none; }
 
         #game-container.is-playing #media-bg-container { opacity: 0.6; }
 
@@ -128,9 +129,6 @@
 
         .judgment-display { position: absolute; top: 50%; font-size: 44px; font-weight: 900; text-transform: uppercase; font-style: italic; letter-spacing: 4px; }
 
-        /* Visualizer Display */
-        #visualizer-canvas { position: absolute; bottom: 0; left: 0; width: 100%; height: 300px; z-index: 3; pointer-events: none; opacity: 0.6; mix-blend-mode: screen; }
-
         .overlay-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: var(--overlay-bg); backdrop-filter: blur(25px); z-index: 100; display: flex; flex-direction: column; align-items: center; padding: 30px; box-sizing: border-box; overflow-y: auto; animation: fadeIn 0.6s ease-out; }
 
         .btn {
@@ -140,10 +138,6 @@
         .btn:hover::after { left: 100%; opacity: 1; }
         .btn:hover:not(:disabled) { transform: translateY(-4px); box-shadow: 0 15px 35px var(--shadow-color); }
         .btn:disabled { background: #64748b; cursor: not-allowed; opacity: 0.5; transform: none; box-shadow: none; }
-        
-        /* Experimental Button Style */
-        .btn.hybrid { background: linear-gradient(45deg, #0ea5e9, #2563eb); font-size: 12px; margin-top: 5px; padding: 12px; }
-        .btn.hybrid.active { background: linear-gradient(45deg, #22c55e, #16a34a); box-shadow: 0 0 15px #22c55e; }
 
         .input-group { width: 100%; max-width: 420px; background: var(--panel-bg); padding: 22px; border-radius: 24px; border: 1px solid var(--panel-border); margin-bottom: 20px; box-sizing: border-box; box-shadow: 0 10px 30px var(--shadow-color); flex-shrink: 0; }
 
@@ -208,29 +202,40 @@
         .key-name { font-size: 18px; color: var(--neon-cyan); font-weight: 900; font-family: 'Exo 2', sans-serif; text-transform: uppercase; }
         .lane-arrow { font-size: 28px; font-weight: 900; line-height: 1; filter: drop-shadow(0 0 8px currentColor); }
 
-        /* BPM Control - Improved visibility */
-        .bpm-control { display: flex; align-items: center; gap: 10px; width: 100%; }
-        #bpm-input { flex: 1; font-size: 18px; background: rgba(0,0,0,0.3); border-color: var(--neon-lime); color: var(--neon-lime); }
-        #tap-bpm-btn { flex: 1; background: var(--neon-lime); color: black; border: none; font-size: 14px; font-weight: 900; border-radius: 12px; cursor: pointer; transition: 0.1s; position: relative; overflow: hidden; box-shadow: 0 0 10px var(--neon-lime); }
-        #tap-bpm-btn:active { transform: scale(0.95); opacity: 0.8; }
-        .bpm-display { font-size: 11px; color: var(--text-color); opacity: 0.8; text-align: center; margin-top: 8px; font-weight: 700; }
+        #touch-controls { position: absolute; bottom: 0; left: 0; width: 100%; height: 160px; display: grid; grid-template-columns: repeat(4, 1fr); z-index: 20; }
+        .touch-btn { background: linear-gradient(to bottom, transparent, rgba(128, 128, 128, 0.08)); border-top: 1px solid rgba(128, 128, 128, 0.15); display: flex; align-items: center; justify-content: center; font-size: 38px; color: rgba(128, 128, 128, 0.4); user-select: none; transition: all 0.15s; pointer-events: auto; }
+        .touch-btn.active { background: rgba(0, 242, 255, 0.15); color: var(--neon-cyan); border-top: 5px solid var(--neon-cyan); text-shadow: 0 0 20px var(--neon-cyan); }
+        
+        /* Auto Map Settings Panel */
+        .bpm-controls { display: grid; grid-template-columns: 1fr 1fr auto; gap: 10px; margin-bottom: 10px; }
+        #tap-bpm-btn { background: var(--neon-pink); border: none; color: white; font-weight: 900; border-radius: 12px; cursor: pointer; box-shadow: 0 4px 10px var(--shadow-color); transition: all 0.1s; font-size: 13px; }
+        #tap-bpm-btn:active { transform: scale(0.95); background: #ff4da6; }
+        .setting-sub-label { font-size: 10px; color: var(--text-color); opacity: 0.6; text-align: left; margin-bottom: 4px; display: block; }
+        .checkbox-container { display: flex; align-items: center; gap: 10px; margin-top: 5px; font-size: 13px; font-weight: 700; color: var(--text-color); }
+        .checkbox-container input { width: auto; margin: 0; }
+
+        /* Local File Input */
+        .local-file-group { margin-top: 15px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 15px; }
+        #local-file-input { display: none; }
+        #local-file-label { display: block; text-align: center; background: rgba(255,255,255,0.1); border: 2px dashed rgba(255,255,255,0.3); padding: 15px; border-radius: 14px; cursor: pointer; transition: 0.3s; color: var(--text-color); font-size: 14px; font-weight: 700; }
+        #local-file-label:hover { border-color: var(--neon-lime); color: var(--neon-lime); background: rgba(188, 255, 0, 0.1); }
+        #local-file-name { font-size: 12px; color: var(--neon-cyan); margin-top: 5px; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
         .hidden { display: none !important; }
         .loader { border: 4px solid rgba(128,128,128,0.2); border-top: 4px solid var(--neon-cyan); border-radius: 50%; width: 28px; height: 28px; animation: spin 1s linear infinite; margin: 0 auto; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes spin { 100% { transform: rotate(360deg); } }
         .toast { position: fixed; top: 30px; background: var(--neon-purple); color: white; padding: 16px 32px; border-radius: 50px; z-index: 300; font-weight: 900; box-shadow: 0 15px 35px var(--shadow-color); border: 2px solid rgba(255,255,255,0.2); }
-        
-        .shake-effect { animation: shake 0.2s cubic-bezier(.36,.07,.19,.97) both; }
-        @keyframes shake { 10%, 90% { transform: translate3d(-2px, 0, 0); } 20%, 80% { transform: translate3d(3px, 0, 0); } 30%, 50%, 70% { transform: translate3d(-5px, 0, 0); } 40%, 60% { transform: translate3d(5px, 0, 0); } }
     </style>
 </head>
 <body class="is-menu">
 
 <div id="game-container">
     <div class="grid-bg"><div class="grid-bg-inner"></div></div>
-    <div id="media-bg-container"></div>
-    <canvas id="visualizer-canvas"></canvas>
+    <div id="media-bg-container">
+        <!-- ローカル再生用のHTML5 Video (非表示/表示切り替え) -->
+        <video id="local-video-player" playsinline webkit-playsinline></video>
+    </div>
     <canvas id="gameCanvas"></canvas>
     
     <button id="theme-toggle" title="Switch Theme">🌙</button>
@@ -262,22 +267,43 @@
                 <span data-i18n="btn_open_library">ライブラリから曲を探す</span>
             </button>
             <div id="yt-status" style="font-size: 13px; color: var(--neon-pink); margin-top: 10px; text-align: center; min-height: 18px; font-weight: 800;"></div>
+
+            <!-- ローカルファイル読み込みセクション -->
+            <div class="local-file-group">
+                <span class="input-label" style="margin-bottom:8px;">OR ローカルファイル (自動解析対応)</span>
+                <label for="local-file-input" id="local-file-label">
+                    📁 MP3 / MP4 を選択
+                </label>
+                <input type="file" id="local-file-input" accept="audio/*,video/*">
+                <div id="local-file-name"></div>
+                <div id="local-analyze-status" style="font-size: 11px; color: var(--neon-lime); text-align: center; margin-top: 5px; height: 16px;"></div>
+            </div>
+        </div>
+        
+        <div id="preview-box">
+            <div id="preview-placeholder" data-i18n="preview_placeholder">動画を読み込むとここに表示されます</div>
+            <div id="preview-content"></div>
         </div>
 
-        <!-- BPM設定エリア（復活・強調） -->
-        <div class="input-group" id="bpm-group" style="border-color: var(--neon-lime);">
-            <span class="input-label" style="color: var(--neon-lime); display: flex; justify-content: space-between;">
-                BPM / SYNC
-                <span style="font-size:10px; opacity:0.7;">準自動同期</span>
-            </span>
-            <div class="bpm-control">
-                <input type="number" id="bpm-input" value="130" min="60" max="250" step="1">
-                <button id="tap-bpm-btn" class="btn" style="margin:0; padding: 14px; font-size: 12px;">TAP to SYNC!</button>
+        <!-- 自動生成設定パネル -->
+        <div class="input-group" id="auto-map-settings">
+            <span class="input-label" data-i18n="label_map_settings">譜面生成設定 (AUTO MAP)</span>
+            <div class="bpm-controls">
+                <div>
+                    <span class="setting-sub-label">BPM (Tempo)</span>
+                    <input type="number" id="bpm-input" value="120" min="40" max="300">
+                </div>
+                <div>
+                    <span class="setting-sub-label">OFFSET (ms)</span>
+                    <input type="number" id="offset-input" value="100" step="10">
+                </div>
+                <button id="tap-bpm-btn" title="再生中にリズムに合わせて4回以上タップ！">TAP<br>SYNC</button>
             </div>
-            <div id="bpm-message" class="bpm-display">曲を聴きながらビートをTAP!</div>
-            
-            <!-- ハイブリッドモード用スイッチ -->
-            <button class="btn hybrid" id="toggle-analysis-btn">🎙️ PC限定: リアルタイム解析演出をONにする</button>
+            <div class="checkbox-container">
+                <input type="checkbox" id="analyze-audio-dummy" checked>
+                <label for="analyze-audio-dummy" data-i18n="label_sync_beat">強拍を強調 (Sync Beat)</label>
+            </div>
+            <div style="font-size: 10px; opacity: 0.6; margin-top: 5px;" data-i18n="msg_tap_instruction">※ YouTubeモード: 動画再生中にリズムに合わせてTAP連打で調整。<br>※ ローカルモード: 音声を自動解析して生成します。</div>
         </div>
 
         <div class="input-group">
@@ -288,11 +314,6 @@
                 <button class="diff-btn" data-diff="hard">HARD</button>
                 <button class="diff-btn" data-diff="expert">EXPERT</button>
             </div>
-        </div>
-
-        <div id="preview-box">
-            <div id="preview-placeholder" data-i18n="preview_placeholder">動画を読み込むとここに表示されます</div>
-            <div id="preview-content"></div>
         </div>
 
         <div id="menu-ranking-container" class="ranking-container hidden">
@@ -332,6 +353,7 @@
                     </button>
                 </div>
                 <button class="btn" id="reset-keys-btn" style="background: rgba(255, 0, 122, 0.15); border: 1px solid var(--neon-pink); color: var(--neon-pink); margin: 20px auto 0 auto; width: 100%; font-size: 14px; border-radius: 14px; box-shadow: none;" data-i18n="btn_reset">デフォルトに戻す</button>
+                <!-- TikTokデータ消去ボタン（メンテナンス用） -->
                 <button class="btn" id="cleanup-tiktok-btn" style="background: rgba(255, 255, 255, 0.1); border: 1px solid #444; color: #888; margin: 10px auto 0 auto; width: 100%; font-size: 11px; border-radius: 10px; box-shadow: none;">TikTokデータを消去 (管理者用)</button>
             </div>
 
@@ -354,6 +376,7 @@
             <span class="input-label" data-i18n="label_comment">一言コメントを残す</span>
             <input type="text" id="player-comment" data-i18n-placeholder="placeholder_comment" maxlength="30">
             <button class="btn" id="register-score-btn" style="margin: 20px 0 0 0; width: 100%; font-size: 15px;" data-i18n="btn_register">ランキングに登録</button>
+            <div id="local-score-msg" style="display:none; text-align:center; color:var(--neon-lime); font-size:12px; margin-top:10px;">※ ローカルファイルのためランキング登録は無効です</div>
         </div>
 
         <div class="ranking-container">
@@ -447,23 +470,19 @@
         } catch (e) { return []; }
     };
 
-    window.registerSharedVideo = async (videoId, title, duration, bpm = null) => {
+    window.registerSharedVideo = async (videoId, title, duration) => {
         if (!currentUser) return;
         try {
             const sharedCol = collection(db, 'artifacts', targetAppId, 'public', 'data', 'shared_videos');
             const snapshot = await getDocs(sharedCol);
             let existingId = null;
-            let currentData = {};
-            snapshot.forEach(d => { if (d.data().videoId === videoId) { existingId = d.id; currentData = d.data(); } });
+            snapshot.forEach(d => { if (d.data().videoId === videoId) existingId = d.id; });
             
             if (!existingId) {
-                await addDoc(sharedCol, { videoId, title, duration, bpm, timestamp: Date.now(), provider: 'youtube' });
-            } else {
+                await addDoc(sharedCol, { videoId, title, duration, timestamp: Date.now(), provider: 'youtube' });
+            } else if (duration) {
                 const videoDoc = doc(db, 'artifacts', targetAppId, 'public', 'data', 'shared_videos', existingId);
-                const updates = { provider: 'youtube' };
-                if (duration) updates.duration = duration;
-                if (bpm) updates.bpm = bpm;
-                await updateDoc(videoDoc, updates);
+                await updateDoc(videoDoc, { duration: duration, provider: 'youtube' });
             }
         } catch (e) { console.error(e); }
     };
@@ -565,7 +584,10 @@ const translations = {
         msg_gamepad_off: "未接続",
         btn_skip_intro: "イントロをスキップ",
         btn_reset: "デフォルトに戻す",
-        msg_reset_done: "初期設定に戻しました"
+        msg_reset_done: "初期設定に戻しました",
+        label_map_settings: "譜面生成設定 (AUTO MAP)",
+        label_sync_beat: "強拍を強調 (Sync Beat)",
+        msg_tap_instruction: "※ YouTubeモード: タップまたは検索で調整。<br>※ ローカルモード: 音声を自動解析して生成します。"
     },
     en: {
         score_label: "SCORE",
@@ -609,15 +631,16 @@ const translations = {
         msg_gamepad_off: "DISCONNECTED",
         btn_skip_intro: "SKIP INTRO",
         btn_reset: "RESET TO DEFAULT",
-        msg_reset_done: "Keys reset to default"
+        msg_reset_done: "Keys reset to default",
+        label_map_settings: "AUTO MAP SETTINGS",
+        label_sync_beat: "Emphasize Strong Beats",
+        msg_tap_instruction: "* YouTube: Use Tap repeatedly during playback. <br>* Local: Auto-analyzed generation."
     }
 };
 
 const gameContainer = document.getElementById('game-container');
 const canvas = document.getElementById('gameCanvas');
-const visualizerCanvas = document.getElementById('visualizer-canvas');
 const ctx = canvas.getContext('2d');
-const vCtx = visualizerCanvas.getContext('2d');
 const mediaBgContainer = document.getElementById('media-bg-container');
 const previewContent = document.getElementById('preview-content');
 const previewPlaceholder = document.getElementById('preview-placeholder');
@@ -632,7 +655,6 @@ const openLibraryBtn = document.getElementById('open-library-btn');
 const closeLibraryBtn = document.getElementById('close-library-btn');
 const skipIntroBtn = document.getElementById('skip-intro-btn');
 const startBtn = document.getElementById('start-btn');
-const toggleAnalysisBtn = document.getElementById('toggle-analysis-btn');
 const ytLoadBtn = document.getElementById('yt-load-btn');
 const ytShareBtn = document.getElementById('yt-share-btn');
 const registerScoreBtn = document.getElementById('register-score-btn');
@@ -653,9 +675,18 @@ const ytUrlInput = document.getElementById('yt-url');
 const themeToggle = document.getElementById('theme-toggle');
 const libraryTabs = document.getElementById('library-tabs');
 const gamepadStatus = document.getElementById('gamepad-status');
-const tapBpmBtn = document.getElementById('tap-bpm-btn');
 const bpmInput = document.getElementById('bpm-input');
-const bpmMessage = document.getElementById('bpm-message');
+const offsetInput = document.getElementById('offset-input');
+const tapBpmBtn = document.getElementById('tap-bpm-btn');
+const analyzeAudioCheck = document.getElementById('analyze-audio-dummy');
+
+// Local File Elements
+const localFileInput = document.getElementById('local-file-input');
+const localFileLabel = document.getElementById('local-file-label');
+const localFileName = document.getElementById('local-file-name');
+const localAnalyzeStatus = document.getElementById('local-analyze-status');
+const localVideoPlayer = document.getElementById('local-video-player');
+const localScoreMsg = document.getElementById('local-score-msg');
 
 const LANE_COUNT = 4;
 const JUDGMENT_MS = { PERFECT: 60, GREAT: 110, GOOD: 160, MISS: 250 };
@@ -672,8 +703,7 @@ const DIFFICULTY_CONFIG = {
 const DEFAULT_KEYS = ["arrowleft", "arrowdown", "arrowup", "arrowright"];
 let currentDiff = 'normal';
 let gameState = 'START';
-let playMode = 'NONE'; // 'NONE', 'VIDEO' (Analysis is now a flag)
-let isAnalysisEnabled = false;
+let playMode = 'NONE'; // 'YOUTUBE' or 'LOCAL'
 let score = 0, combo = 0, maxCombo = 0;
 let notes = [];
 let gameStartTime = 0;
@@ -685,14 +715,11 @@ let currentDuration = 0;
 let ytPlayer;
 let currentLang = 'en';
 let uiText = translations.en;
-let tapTimes = [];
-let lastTapVideoTime = 0; 
+let detectedPeaks = []; // For Local Auto Map
 
-// Audio Analysis Variables
-let audioContext, analyser, dataArray, source;
-let analysisStream = null;
-let lastNoteTime = 0;
-let energyHistory = [];
+// TAP BPM Logic
+let tapTimes = []; // システム時刻（BPM計算用）
+let tapVideoTimes = []; // 動画内時刻（オフセット計算用）
 
 // キーコンフィグ
 let keyBindings = JSON.parse(localStorage.getItem('neon-hero-keys')) || [...DEFAULT_KEYS];
@@ -764,6 +791,67 @@ resetKeysBtn.addEventListener('click', () => {
     showToast(uiText.msg_reset_done);
 });
 
+tapBpmBtn.addEventListener('mousedown', tapBpmHandler);
+tapBpmBtn.addEventListener('touchstart', (e) => { e.preventDefault(); tapBpmHandler(); });
+
+function tapBpmHandler() {
+    const now = Date.now();
+    const videoTime = getCurrentTimeMs();
+    // Local Video or YouTube
+    const isPlaying = (playMode === 'VIDEO' && ytPlayer && ytPlayer.getPlayerState() === YT.PlayerState.PLAYING) || 
+                      (playMode === 'LOCAL' && !localVideoPlayer.paused);
+
+    // 2秒以上間隔が空いたらリセット
+    if (tapTimes.length > 0 && now - tapTimes[tapTimes.length - 1] > 2000) {
+        tapTimes = [];
+        tapVideoTimes = [];
+    }
+    
+    tapTimes.push(now);
+    if (isPlaying) tapVideoTimes.push(videoTime);
+    
+    if (tapTimes.length > 8) { // 最新8回分を使用
+        tapTimes.shift();
+        if (tapVideoTimes.length > 8) tapVideoTimes.shift();
+    }
+
+    // エフェクト
+    tapBpmBtn.style.background = "white";
+    tapBpmBtn.style.color = "black";
+    setTimeout(() => {
+        tapBpmBtn.style.background = "";
+        tapBpmBtn.style.color = "";
+    }, 100);
+
+    if (tapTimes.length > 1) {
+        // BPM計算
+        let intervals = [];
+        for (let i = 1; i < tapTimes.length; i++) {
+            intervals.push(tapTimes[i] - tapTimes[i - 1]);
+        }
+        const avgInterval = intervals.reduce((a, b) => a + b) / intervals.length;
+        const bpm = Math.round(60000 / avgInterval);
+        
+        // 異常値除外
+        if (bpm >= 40 && bpm <= 300) {
+            bpmInput.value = bpm;
+            
+            // オフセット計算（動画再生中のみ）
+            if (isPlaying && tapVideoTimes.length > 0) {
+                // 最後のタップタイミングは「拍の頭」である可能性が高い
+                const lastTapVideoTime = tapVideoTimes[tapVideoTimes.length - 1];
+                const msPerBeat = 60000 / bpm;
+                
+                // 動画の0秒地点から、この最後のタップまでの時間をビート間隔で割った余りがオフセット
+                let calculatedOffset = Math.round(lastTapVideoTime % msPerBeat);
+                
+                // 反応遅延などの微調整はあえて入れず、計算値をそのまま出す
+                offsetInput.value = calculatedOffset;
+            }
+        }
+    }
+}
+
 // TikTokデータ削除実行
 cleanupTiktokBtn.addEventListener('click', async () => {
     if (!confirm("TikTokの履歴データをすべて削除しますか？")) return;
@@ -775,68 +863,16 @@ cleanupTiktokBtn.addEventListener('click', async () => {
     showToast(`${count}件のデータを削除しました`);
 });
 
-// BPM Tap Logic
-tapBpmBtn.addEventListener('click', () => {
-    const now = Date.now();
-    const videoTime = getCurrentTimeMs(); // 動画の現在時間を取得
-
-    // 2秒以上間隔が空いたらリセット
-    if (tapTimes.length > 0 && now - tapTimes[tapTimes.length - 1] > 2000) {
-        tapTimes = [];
-        bpmMessage.innerText = "Reset. Tap again!";
-    }
-    
-    tapTimes.push(now);
-    lastTapVideoTime = videoTime; // 動画上のタイミングを保存
-    
-    // アニメーション効果
-    tapBpmBtn.style.transform = "scale(0.9)";
-    setTimeout(() => tapBpmBtn.style.transform = "scale(1)", 100);
-
-    if (tapTimes.length >= 4) {
-        // 直近8回の平均を取る
-        const relevantTaps = tapTimes.slice(-8); 
-        let intervals = [];
-        for (let i = 1; i < relevantTaps.length; i++) {
-            intervals.push(relevantTaps[i] - relevantTaps[i-1]);
-        }
-        const avgInterval = intervals.reduce((a, b) => a + b, 0) / intervals.length;
-        const bpm = Math.round(60000 / avgInterval);
-        
-        // 範囲制限
-        if (bpm >= 60 && bpm <= 300) {
-            bpmInput.value = bpm;
-            bpmMessage.innerText = `SYNCED: ${bpm} BPM`;
-            bpmMessage.style.color = "var(--neon-lime)";
-            
-            // BPM保存
-            localStorage.setItem('lastBpm', bpm);
-
-            // BPMが変更されたらマップ再生成 (オフセット情報付き)
-            if (currentDuration > 0) {
-                notes = generateMap(currentDuration, currentVideoId);
-                showToast(`BPM:${bpm} で譜面を再構築しました`);
-            }
-        }
-    } else {
-        bpmMessage.innerText = `Keep tapping... (${tapTimes.length})`;
-    }
-});
-// 手動入力時も再生成
-bpmInput.addEventListener('change', () => {
-    const bpm = parseInt(bpmInput.value);
-    localStorage.setItem('lastBpm', bpm);
-    if (currentDuration > 0) {
-        notes = generateMap(currentDuration, currentVideoId);
-    }
-});
-
-
 function skipIntro() {
-    if (ytPlayer && notes.length > 0) {
+    if (gameState === 'PLAYING' && notes.length > 0) {
         const firstNoteTime = notes[0].time;
         const seekTarget = Math.max(0, (firstNoteTime - 2000) / 1000);
-        ytPlayer.seekTo(seekTarget, true);
+        
+        if (playMode === 'VIDEO' && ytPlayer) {
+            ytPlayer.seekTo(seekTarget, true);
+        } else if (playMode === 'LOCAL' && localVideoPlayer) {
+            localVideoPlayer.currentTime = seekTarget;
+        }
         skipIntroBtn.style.display = 'none';
     }
 }
@@ -933,10 +969,13 @@ diffSelector.addEventListener('click', (e) => {
         document.querySelectorAll('.diff-btn').forEach(btn => btn.classList.remove('active'));
         target.classList.add('active');
         currentDiff = target.dataset.diff;
-        if (currentDuration > 0) {
-            notes = generateMap(currentDuration, currentVideoId);
-            updateRankingDisplay(currentVideoId, currentDiff, menuRankingList, menuRankingContainer);
+        // If we have auto-analysis data, re-generate map
+        if (playMode === 'LOCAL' && detectedPeaks.length > 0) {
+             notes = generateMapFromPeaks(detectedPeaks, currentDuration);
+        } else if (currentDuration > 0) {
+            notes = generateMap(currentDuration);
         }
+        updateRankingDisplay(currentVideoId, currentDiff, menuRankingList, menuRankingContainer);
     }
 });
 
@@ -967,18 +1006,16 @@ async function renderLibrary(mode) {
     }
 
     sharedListFull.innerHTML = displayList.map(v => {
-        // TikTokデータが混ざっている場合のフォールバック
         const thumb = v.provider === 'tiktok' ? 'https://www.tiktok.com/favicon.ico' : `https://img.youtube.com/vi/${v.videoId}/mqdefault.jpg`;
-        const bpmDisplay = v.bpm ? `<span style="color:var(--neon-lime); font-size:10px; margin-left:5px;">BPM:${v.bpm}</span>` : "";
         return `
-        <div class="shared-item-full" data-id="${v.videoId}" data-bpm="${v.bpm || ''}">
+        <div class="shared-item-full" data-id="${v.videoId}">
             <span class="play-count-badge">${v.playCount}${uiText.plays_suffix}</span>
             <div class="thumbnail-container">
                 <img src="${thumb}" class="shared-thumbnail" onerror="this.src='https://via.placeholder.com/120x68?text=No+Image'">
                 ${v.duration ? `<span class="duration-badge">${formatDuration(v.duration)}</span>` : ""}
             </div>
             <div class="shared-item-info">
-                <div class="shared-item-title">${v.title || "Untitled Track"} ${bpmDisplay}</div>
+                <div class="shared-item-title">${v.title || "Untitled Track"}</div>
             </div>
         </div>
     `}).join('');
@@ -986,17 +1023,131 @@ async function renderLibrary(mode) {
     document.querySelectorAll('.shared-item-full').forEach(item => {
         item.addEventListener('click', () => {
             ytUrlInput.value = `https://www.youtube.com/watch?v=${item.dataset.id}`;
-            const savedBpm = item.dataset.bpm;
-            if (savedBpm && savedBpm !== "undefined") {
-                bpmInput.value = savedBpm;
-                bpmMessage.innerText = `Loaded: ${savedBpm} BPM`;
-            }
             loadYoutube(item.dataset.id);
             libraryModal.classList.remove('is-visible');
         });
     });
 }
 
+// Local File Logic
+localFileInput.addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    // Reset UI
+    playMode = 'LOCAL';
+    detectedPeaks = [];
+    localFileName.innerText = file.name;
+    localAnalyzeStatus.innerText = "音声解析中...";
+    startBtn.disabled = true;
+    
+    // Switch Players
+    previewContent.innerHTML = ''; // Hide YT
+    previewPlaceholder.classList.add('hidden');
+    localVideoPlayer.style.display = 'block';
+    
+    // Set Video Source
+    const url = URL.createObjectURL(file);
+    localVideoPlayer.src = url;
+    
+    // Web Audio Analysis (Pre-analysis)
+    try {
+        const arrayBuffer = await file.arrayBuffer();
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+        
+        currentDuration = audioBuffer.duration;
+        detectedPeaks = analyzeAudioBuffer(audioBuffer); // Get raw peaks
+        
+        // Generate Map
+        notes = generateMapFromPeaks(detectedPeaks, currentDuration);
+        
+        localAnalyzeStatus.innerText = `解析完了: ${notes.length} NOTES`;
+        localAnalyzeStatus.style.color = "var(--neon-lime)";
+        startBtn.disabled = false;
+        
+        // Disable ranking for local files
+        registerScoreBtn.disabled = true;
+        registerScoreBtn.innerText = "ランキング登録不可";
+        localScoreMsg.style.display = 'block';
+        
+        // Hide ranking container
+        menuRankingContainer.classList.add('hidden');
+
+    } catch (err) {
+        console.error(err);
+        localAnalyzeStatus.innerText = "解析エラー: ファイル形式を確認してください";
+        localAnalyzeStatus.style.color = "var(--neon-pink)";
+    }
+});
+
+function analyzeAudioBuffer(audioBuffer) {
+    // Simple Peak Detection
+    const rawData = audioBuffer.getChannelData(0); // Use first channel
+    const sampleRate = audioBuffer.sampleRate;
+    const windowSize = Math.floor(sampleRate / 20); // 50ms windows
+    const peaks = [];
+    
+    for (let i = 0; i < rawData.length; i += windowSize) {
+        let max = 0;
+        // Find max amplitude in window
+        for (let j = 0; j < windowSize && i + j < rawData.length; j++) {
+            const val = Math.abs(rawData[i + j]);
+            if (val > max) max = val;
+        }
+        // Store peak with timestamp
+        if (max > 0.1) { // Threshold silence
+            peaks.push({ time: (i / sampleRate) * 1000, vol: max });
+        }
+    }
+    return peaks;
+}
+
+function generateMapFromPeaks(peaks, duration) {
+    const map = [];
+    const config = DIFFICULTY_CONFIG[currentDiff];
+    
+    // Normalize volumes
+    const maxVol = Math.max(...peaks.map(p => p.vol));
+    const normalizedPeaks = peaks.map(p => ({ time: p.time, vol: p.vol / maxVol }));
+    
+    // Dynamic Threshold based on difficulty
+    let threshold = 0.4;
+    if (currentDiff === 'hard') threshold = 0.3;
+    if (currentDiff === 'expert') threshold = 0.2;
+
+    let lastNoteTime = -1000;
+    const minInterval = (60 / 300) * 1000; // Cap max speed (300 BPM 4th note)
+
+    normalizedPeaks.forEach(p => {
+        if (p.vol > threshold) {
+            // Avoid too close notes (spam protection)
+            // Higher difficulty allows closer notes
+            const requiredInterval = currentDiff === 'expert' ? 100 : (currentDiff === 'hard' ? 200 : 300);
+
+            if (p.time - lastNoteTime > requiredInterval) {
+                let noteType = 'normal';
+                if (p.vol > 0.85) noteType = 'strong';
+
+                // Determine lane based on volume hash or just random
+                // Strong notes -> Outer lanes or doubles (expert)
+                if (currentDiff === 'expert' && p.vol > 0.9 && Math.random() < 0.3) {
+                     map.push({ time: p.time, lane: 0, hit: false, type: 'strong' });
+                     map.push({ time: p.time, lane: 3, hit: false, type: 'strong' });
+                } else {
+                    const lane = Math.floor(Math.random() * LANE_COUNT);
+                    map.push({ time: p.time, lane: lane, hit: false, type: noteType });
+                }
+                lastNoteTime = p.time;
+            }
+        }
+    });
+
+    return map;
+}
+
+
+// Original Youtube Logic
 function extractYoutubeId(url) {
     const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
     const match = url.match(regExp);
@@ -1005,11 +1156,27 @@ function extractYoutubeId(url) {
 
 function loadYoutube(vidId) {
     currentVideoId = vidId;
-    localStorage.setItem('lastVideoId', vidId); // 動画IDを保存
+    playMode = 'VIDEO';
     
-    ytStatus.innerHTML = `<div class="loader"></div> ${uiText.msg_loading}`;
+    // UI Reset
+    localVideoPlayer.style.display = 'none';
+    localVideoPlayer.pause();
     previewPlaceholder.classList.add('hidden');
     previewContent.innerHTML = '<div id="yt-player-target"></div>';
+    
+    // Reset Local status
+    localFileName.innerText = "";
+    localAnalyzeStatus.innerText = "";
+    localFileInput.value = "";
+    
+    // Enable ranking
+    registerScoreBtn.disabled = false;
+    registerScoreBtn.innerText = uiText.btn_register;
+    localScoreMsg.style.display = 'none';
+    menuRankingContainer.classList.remove('hidden');
+
+    ytStatus.innerHTML = `<div class="loader"></div> ${uiText.msg_loading}`;
+    
     const safeOrigin = window.location.protocol === 'file:' ? 'https://www.youtube.com' : window.location.origin;
     ytPlayer = new YT.Player('yt-player-target', {
         height: '100%', width: '100%', videoId: vidId,
@@ -1019,15 +1186,12 @@ function loadYoutube(vidId) {
                 const duration = e.target.getDuration();
                 if (duration === 0) { ytStatus.innerText = uiText.msg_error; return; }
                 currentDuration = duration;
-                notes = generateMap(currentDuration, vidId);
-                playMode = 'VIDEO';
+                notes = generateMap(currentDuration);
                 ytStatus.innerText = uiText.msg_ready;
                 startBtn.disabled = false;
-                toggleAnalysisBtn.style.display = 'block'; // 動画読み込み後に表示
                 ytShareBtn.classList.remove('hidden');
                 updateRankingDisplay(currentVideoId, currentDiff, menuRankingList, menuRankingContainer);
-                // BPMも保存するために登録関数を更新（非同期でOK）
-                window.registerSharedVideo(vidId, ytPlayer.getVideoData().title, Math.floor(duration), parseInt(bpmInput.value));
+                window.registerSharedVideo(vidId, ytPlayer.getVideoData().title, Math.floor(duration));
                 e.target.unMute();
                 e.target.setVolume(50); 
             },
@@ -1055,227 +1219,108 @@ function showToast(msg) {
     document.body.appendChild(toast); setTimeout(() => toast.remove(), 2500);
 }
 
-// シード付き乱数生成クラス
-class SeededRandom {
-    constructor(seedString) {
-        let h1 = 1779033703, h2 = 3144134277, h3 = 1013904242, h4 = 2773480762;
-        for (let i = 0, k; i < seedString.length; i++) {
-            k = seedString.charCodeAt(i);
-            h1 = h2 ^ Math.imul(h1 ^ k, 597399067);
-            h2 = h3 ^ Math.imul(h2 ^ k, 2869860233);
-            h3 = h4 ^ Math.imul(h3 ^ k, 951274213);
-            h4 = h1 ^ Math.imul(h4 ^ k, 2716044179);
-        }
-        h1 = Math.imul(h3 ^ (h1 >>> 18), 597399067);
-        h2 = Math.imul(h4 ^ (h2 >>> 22), 2869860233);
-        h3 = Math.imul(h1 ^ (h3 >>> 17), 951274213);
-        h4 = Math.imul(h2 ^ (h4 >>> 19), 2716044179);
-        this.a = h1 >>> 0; this.b = h2 >>> 0; this.c = h3 >>> 0; this.d = h4 >>> 0;
-    }
-    next() {
-        this.a >>>= 0; this.b >>>= 0; this.c >>>= 0; this.d >>>= 0; 
-        let t = (this.a + this.b) | 0;
-        this.a = this.b ^ (this.b >>> 9);
-        this.b = (this.c + (this.c << 3)) | 0;
-        this.c = (this.c << 21) | (this.c >>> 11);
-        this.d = (this.d + 1) | 0;
-        t = (t + this.d) | 0;
-        this.c = (this.c + t) | 0;
-        return (t >>> 0) / 4294967296;
-    }
-}
-
-function generateMap(durationSeconds, seedStr = "default") {
+function generateMap(durationSeconds) {
     const map = [];
     const config = DIFFICULTY_CONFIG[currentDiff];
     
-    const rng = new SeededRandom(seedStr + currentDiff);
+    // Auto Map Settings
+    const bpm = parseInt(bpmInput.value) || 120;
+    const offset = parseInt(offsetInput.value) || 0;
+    const emphasizeBeat = analyzeAudioCheck.checked;
     
-    const bpm = parseInt(bpmInput.value) || 130;
-    const beatInterval = 60000 / bpm; 
+    const msPerBeat = 60000 / bpm;
+    const totalMs = durationSeconds * 1000;
     
-    let startOffset = 2500;
-    
-    if (lastTapVideoTime > 0) {
-        const rawRem = lastTapVideoTime % beatInterval;
-        startOffset = rawRem;
-        while(startOffset < 2000) {
-            startOffset += beatInterval;
-        }
-    }
+    // Grid Based Generation
+    let currentMs = offset;
+    let beatIndex = 0;
 
-    const endOffset = durationSeconds * 1000 - 2000;
-    
-    let currentBeat = 0;
-    let currentTime = startOffset;
-    const noteProb = config.density; 
+    // Density factor adjustment
+    const densityProb = config.density * 0.45; 
 
-    while (currentTime < endOffset) {
-        let isNote = rng.next() < (noteProb * 0.8);
-        const measure = Math.floor(currentBeat / 4);
-        const isChorus = (measure % 8 >= 4); 
+    // Adjust start time to give a little prep
+    if (currentMs < 2000) currentMs += (Math.ceil((2000 - currentMs) / msPerBeat) * msPerBeat);
+
+    while (currentMs < totalMs - 2000) {
+        // Strong beat (Beat 1 of 4)
+        const isStrongBeat = (beatIndex % 4 === 0);
         
-        if (isChorus) {
-            isNote = rng.next() < (noteProb * 1.2);
-            if ((currentDiff === 'hard' || currentDiff === 'expert') && rng.next() < 0.4) {
-                 const eighthTime = currentTime + (beatInterval / 2);
-                 if (eighthTime < endOffset) {
-                    map.push({ time: eighthTime, lane: Math.floor(rng.next() * LANE_COUNT), hit: false });
-                 }
-            }
+        let placeNote = false;
+        let noteType = 'normal';
+
+        if (isStrongBeat) {
+             placeNote = Math.random() < 0.95; // Almost always place on strong beat
+             if (emphasizeBeat) noteType = 'strong';
+        } else {
+             placeNote = Math.random() < densityProb;
         }
 
-        if (isNote) {
-            map.push({ time: currentTime, lane: Math.floor(rng.next() * LANE_COUNT), hit: false });
-            if ((currentDiff === 'expert') && rng.next() < 0.2) {
-                map.push({ time: currentTime, lane: (Math.floor(rng.next() * LANE_COUNT) + 1) % LANE_COUNT, hit: false });
+        if (placeNote) {
+            let lane;
+            if (noteType === 'strong') {
+                if (currentDiff === 'expert' && Math.random() < 0.4) {
+                    map.push({ time: currentMs, lane: 0, hit: false, type: 'strong' });
+                    map.push({ time: currentMs, lane: 3, hit: false, type: 'strong' });
+                } else {
+                    lane = Math.random() < 0.5 ? 0 : 3;
+                    map.push({ time: currentMs, lane: lane, hit: false, type: 'strong' });
+                }
+            } else {
+                lane = Math.floor(Math.random() * LANE_COUNT);
+                map.push({ time: currentMs, lane: lane, hit: false });
             }
         }
-
-        currentTime += beatInterval;
-        currentBeat++;
+        // Handle sub-beats...
+        if ((currentDiff === 'hard' || currentDiff === 'expert') && Math.random() < (config.density * 0.3)) {
+            const halfTime = currentMs + (msPerBeat / 2);
+            if (halfTime < totalMs - 2000) map.push({ time: halfTime, lane: Math.floor(Math.random() * LANE_COUNT), hit: false });
+        }
+        
+        currentMs += msPerBeat;
+        beatIndex++;
     }
+
     return map.sort((a,b) => a.time - b.time);
 }
 
 function getCurrentTimeMs() {
-    return (playMode === 'VIDEO' && ytPlayer?.getCurrentTime) ? ytPlayer.getCurrentTime() * 1000 : 0;
-}
-
-// ------ Hybrid Audio Analysis ------
-async function setupAudioAnalysis() {
-    try {
-        if (!navigator.mediaDevices.getDisplayMedia) {
-            alert("このブラウザは画面共有音声キャプチャに対応していません。");
-            return false;
-        }
-
-        // --- わかりやすい案内を追加 ---
-        alert("【重要：共有画面の選び方】\n\n1. 出てきたウィンドウの「Chrome タブ」を選びます。\n2. リストの中から「dma-cmyk.github.io」または「ネオン・ヒーロー」を選択します。\n3. 「タブの音声も共有する」をONにして「共有」ボタンを押してください！");
-
-        const stream = await navigator.mediaDevices.getDisplayMedia({
-            video: true,
-            audio: {
-                echoCancellation: false,
-                autoGainControl: false,
-                noiseSuppression: false,
-                channelCount: 2
-            }
-        });
-
-        const audioTrack = stream.getAudioTracks()[0];
-        if (!audioTrack) {
-            alert("音声が共有されていません。「システムオーディオを共有」または「タブの音声を共有」をチェックしてください。");
-            stream.getTracks().forEach(t => t.stop());
-            return false;
-        }
-
-        audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        analysisStream = stream;
-        source = audioContext.createMediaStreamSource(stream);
-        analyser = audioContext.createAnalyser();
-        analyser.fftSize = 256;
-        source.connect(analyser);
-        
-        dataArray = new Uint8Array(analyser.frequencyBinCount);
-        
-        isAnalysisEnabled = true;
-        toggleAnalysisBtn.classList.add('active');
-        toggleAnalysisBtn.innerText = "リアルタイム解析中 (ON)";
-        
-        // ユーザーが共有停止した時の処理
-        audioTrack.onended = () => {
-            isAnalysisEnabled = false;
-            toggleAnalysisBtn.classList.remove('active');
-            toggleAnalysisBtn.innerText = "🎙️ PC限定: リアルタイム解析演出をONにする";
-            analysisStream = null;
-        };
-
-        return true;
-
-    } catch (err) {
-        console.error("Error: " + err);
-        return false;
+    if (playMode === 'VIDEO' && ytPlayer?.getCurrentTime) {
+        return ytPlayer.getCurrentTime() * 1000;
+    } else if (playMode === 'LOCAL' && localVideoPlayer) {
+        return localVideoPlayer.currentTime * 1000;
     }
+    return 0;
 }
 
-// シンプルなビート検出（エネルギー閾値法） & Visualizer
-function processAudioVisuals() {
-    if (!analyser) return;
-    analyser.getByteFrequencyData(dataArray);
-
-    // Visualizer Draw
-    vCtx.clearRect(0, 0, visualizerCanvas.width, visualizerCanvas.height);
-    const barWidth = visualizerCanvas.width / (dataArray.length / 2);
-    
-    // 低音域のエネルギー計算
-    let bassEnergy = 0;
-    const binCount = 6; 
-    for (let i = 0; i < binCount; i++) bassEnergy += dataArray[i];
-    bassEnergy /= binCount;
-
-    // Visualizer Bars
-    for(let i = 0; i < dataArray.length / 2; i++) {
-        const barHeight = dataArray[i];
-        // 強いビートのときは色を変える
-        if (bassEnergy > 200) {
-            vCtx.fillStyle = `rgba(255, 0, 122, ${barHeight/255})`;
-        } else {
-            vCtx.fillStyle = `rgba(0, 242, 255, ${barHeight/255})`;
-        }
-        vCtx.fillRect(i * barWidth, visualizerCanvas.height - barHeight, barWidth, barHeight);
-    }
-
-    // Beat Detection Logic for Screen Shake
-    energyHistory.push(bassEnergy);
-    if (energyHistory.length > 30) energyHistory.shift();
-    let avgEnergy = energyHistory.reduce((a,b) => a+b, 0) / energyHistory.length;
-    
-    const now = performance.now();
-    if (bassEnergy > avgEnergy * 1.5 && bassEnergy > 120) {
-        if (now - lastNoteTime > 200) { 
-            // 強いビートを検出したら画面を揺らす
-            triggerBeatEffect();
-            lastNoteTime = now;
-        }
-    }
-}
-
-function triggerBeatEffect() {
-    gameContainer.classList.remove('shake-effect');
-    void gameContainer.offsetWidth; // trigger reflow
-    gameContainer.classList.add('shake-effect');
-    
-    // 背景フラッシュ
-    const flash = document.createElement('div');
-    flash.style.position = 'absolute';
-    flash.style.top = '0'; flash.style.left = '0';
-    flash.style.width = '100%'; flash.style.height = '100%';
-    flash.style.background = 'rgba(255,255,255,0.1)';
-    flash.style.pointerEvents = 'none';
-    flash.style.zIndex = '4';
-    gameContainer.appendChild(flash);
-    setTimeout(() => flash.remove(), 100);
-}
-
-// ------ End Audio Analysis ------
-
-function drawArrowNote(lane, x, y, size) {
+function drawArrowNote(lane, x, y, size, type = 'normal') {
     const half = size / 2, quarter = size / 4;
     ctx.save(); ctx.translate(x, y);
     ctx.rotate([-Math.PI/2, Math.PI, 0, Math.PI/2][lane]);
+    
+    // Scale up slightly for strong notes
+    if (type === 'strong') ctx.scale(1.1, 1.1);
+
     ctx.beginPath();
     ctx.moveTo(0, -half); ctx.lineTo(half, 0); ctx.lineTo(quarter, 0); ctx.lineTo(quarter, half); ctx.lineTo(-quarter, half); ctx.lineTo(-quarter, 0); ctx.lineTo(-half, 0);
     ctx.closePath(); ctx.fill();
+    
+    // Add inner detail
     ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
     ctx.beginPath(); ctx.moveTo(0, -half + 4); ctx.lineTo(half - 8, 0); ctx.lineTo(-half + 8, 0); ctx.closePath(); ctx.fill();
+    
+    // Extra glow for strong notes
+    if (type === 'strong') {
+        ctx.strokeStyle = "white";
+        ctx.lineWidth = 2;
+        ctx.stroke();
+    }
+
     ctx.restore();
 }
 
 function checkHit(laneIdx) {
     const now = getCurrentTimeMs();
     let closestNote = null, minDiff = Infinity;
-    
     for (let n of notes) {
         if (n.lane === laneIdx && !n.hit) {
             const diff = Math.abs(n.time - now);
@@ -1312,58 +1357,39 @@ function applyVisualHit(judg, laneIdx) {
 
 function draw() {
     pollGamepad();
-    
-    // 解析が有効ならビジュアライザーと演出を実行
-    if (isAnalysisEnabled) {
-        processAudioVisuals();
-    }
-    
     const now = getCurrentTimeMs();
-    
-    if (gameState === 'PLAYING' && notes.length > 0 && playMode === 'VIDEO') {
+    if (gameState === 'PLAYING' && notes.length > 0) {
         const firstNoteTime = notes[0].time;
         skipIntroBtn.style.display = (now < firstNoteTime - 4000) ? 'block' : 'none';
     } else {
         skipIntroBtn.style.display = 'none';
     }
-
     if (gameState !== 'PLAYING') {
         if (gameState === 'START' || gameState === 'FINISHED') requestAnimationFrame(draw);
         return;
     }
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     const laneWidth = canvas.width / LANE_COUNT, hitY = canvas.height * HIT_LINE_Y, config = DIFFICULTY_CONFIG[currentDiff], isLight = document.body.classList.contains('light-mode');
-    
-    // Draw Lanes
     for (let i = 0; i < LANE_COUNT; i++) {
         ctx.fillStyle = activeLanes[i] ? (isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.12)') : 'rgba(128,128,128,0.02)';
         ctx.fillRect(i * laneWidth, 0, laneWidth, canvas.height);
         ctx.strokeStyle = activeLanes[i] ? CORE_COLORS[i] : (isLight ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.15)');
         ctx.lineWidth = 5; ctx.beginPath(); ctx.moveTo(i * laneWidth + 10, hitY); ctx.lineTo((i + 1) * laneWidth - 10, hitY); ctx.stroke();
     }
-
-    // Draw Notes
     notes.forEach(note => {
         if (note.hit) return;
-        
-        let timeDiff = note.time - now;
-        const speed = config.speed; 
-        const y = hitY - (timeDiff * speed);
-
+        const timeDiff = note.time - now, y = hitY - (timeDiff * config.speed);
         if (y > -100 && y < canvas.height + 100) {
             ctx.fillStyle = CORE_COLORS[note.lane]; ctx.shadowBlur = isLight ? 12 : 20; ctx.shadowColor = CORE_COLORS[note.lane];
-            drawArrowNote(note.lane, (note.lane + 0.5) * laneWidth, y, laneWidth * 0.7);
+            drawArrowNote(note.lane, (note.lane + 0.5) * laneWidth, y, laneWidth * 0.7, note.type);
             ctx.shadowBlur = 0;
         }
-        
-        // Miss判定
         if (timeDiff < -JUDGMENT_MS.MISS && !note.hit) {
             note.hit = true; combo = 0; stats.miss++;
             judgmentText.innerText = "Miss"; comboText.style.opacity = "0";
             judgmentText.style.color = "#666"; judgmentText.style.textShadow = "none";
         }
     });
-
     particles = particles.filter(p => p.life > 0);
     particles.forEach(p => {
         ctx.globalAlpha = p.life; ctx.fillStyle = p.color;
@@ -1371,9 +1397,13 @@ function draw() {
         p.x += p.vx; p.y += p.vy; p.vy += 0.5; p.life -= 0.025;
     });
     ctx.globalAlpha = 1.0;
-    
-    if (playMode === 'VIDEO' && ytPlayer?.getPlayerState?.() === YT.PlayerState.ENDED) endGame(); 
-    else requestAnimationFrame(draw);
+
+    // Check End Condition
+    let isEnded = false;
+    if (playMode === 'VIDEO' && ytPlayer?.getPlayerState?.() === YT.PlayerState.ENDED) isEnded = true;
+    if (playMode === 'LOCAL' && localVideoPlayer.ended) isEnded = true;
+
+    if (isEnded) endGame(); else requestAnimationFrame(draw);
 }
 
 async function startGame() {
@@ -1382,11 +1412,11 @@ async function startGame() {
     score = 0; combo = 0; maxCombo = 0; stats = { perfect: 0, great: 0, good: 0, miss: 0 };
     particles = []; scoreVal.innerText = "000000"; judgmentText.innerText = "";
     
-    if (currentVideoId && ytPlayer) {
-        window.registerSharedVideo(currentVideoId, ytPlayer.getVideoData().title, Math.floor(currentDuration), parseInt(bpmInput.value));
-        notes = generateMap(currentDuration, currentVideoId);
-        playMode = 'VIDEO';
+    // Regenerate map if needed (Youtube Mode mostly)
+    if (playMode === 'VIDEO' && currentDuration > 0) {
+        notes = generateMap(currentDuration);
     }
+    // Local mode uses pre-generated 'notes' from 'detectedPeaks'
 
     startScreen.classList.add('hidden'); resultScreen.classList.add('hidden'); gameContainer.classList.add('is-playing');
     
@@ -1395,60 +1425,48 @@ async function startGame() {
             window.recordPlay(currentVideoId, ytPlayer.getVideoData().title);
         }
         mediaBgContainer.innerHTML = '';
-        const playerDiv = ytPlayer.getIframe();
-        mediaBgContainer.appendChild(playerDiv);
+        mediaBgContainer.appendChild(localVideoPlayer); // Append hidden local player back
+        mediaBgContainer.appendChild(ytPlayer.getIframe());
+        
         ytPlayer.unMute();
         ytPlayer.setVolume(100);
         ytPlayer.seekTo(0);
         ytPlayer.playVideo();
         setTimeout(() => { if (ytPlayer) { ytPlayer.unMute(); ytPlayer.setVolume(100); } }, 500);
+
+    } else if (playMode === 'LOCAL' && localVideoPlayer) {
+        // Show Local Video
+        localVideoPlayer.style.display = 'block';
+        localVideoPlayer.currentTime = 0;
+        localVideoPlayer.volume = 1.0;
+        localVideoPlayer.play();
     }
-    
+
     gameState = 'PLAYING';
     requestAnimationFrame(draw);
 }
 
-// Hybrid Analysis Toggle
-toggleAnalysisBtn.addEventListener('click', async () => {
-    if (isAnalysisEnabled) {
-        // Stop
-        if (analysisStream) {
-            analysisStream.getTracks().forEach(track => track.stop());
-            analysisStream = null;
-        }
-        isAnalysisEnabled = false;
-        toggleAnalysisBtn.classList.remove('active');
-        toggleAnalysisBtn.innerText = "🎙️ PC限定: リアルタイム解析演出をONにする";
-    } else {
-        // Start
-        await setupAudioAnalysis();
-    }
-});
-
 async function endGame() {
     gameState = 'FINISHED';
-    
-    // 解析は停止せず、次回のプレイのために維持しても良いが、一応停止する
-    if (isAnalysisEnabled && analysisStream) {
-       // Optional: keep it running for seamless retry? 
-       // For now, let's keep it running if the user wants to retry immediately.
-       // But strictly speaking, we should probably stop it to release resources.
-       // Let's stop it for safety.
-       analysisStream.getTracks().forEach(track => track.stop());
-       analysisStream = null;
-       isAnalysisEnabled = false;
-       toggleAnalysisBtn.classList.remove('active');
-       toggleAnalysisBtn.innerText = "🎙️ PC限定: リアルタイム解析演出をONにする";
-    }
-    
     resultScreen.classList.remove('hidden'); gameContainer.classList.remove('is-playing');
     document.getElementById('final-score').innerText = score.toLocaleString();
     document.getElementById('stats-detail').innerHTML = `<span style="color:var(--neon-cyan)">${uiText.stats_perfect}: ${stats.perfect}</span> | <span style="color:var(--neon-pink)">${uiText.stats_great}: ${stats.great}</span> | <span style="color:var(--neon-lime)">${uiText.stats_good}: ${stats.good}</span><br>${uiText.stats_combo}: ${maxCombo} | LEVEL: ${currentDiff.toUpperCase()}`;
-    registerScoreBtn.disabled = false;
-    if(playMode === 'VIDEO') updateRankingDisplay(currentVideoId, currentDiff, resultRankingList);
+    
+    // Handle Ranking Availability
+    if (playMode === 'LOCAL') {
+        registerScoreBtn.disabled = true;
+        registerScoreBtn.innerText = "ランキング登録不可";
+        localScoreMsg.style.display = 'block';
+        menuRankingContainer.classList.add('hidden');
+    } else {
+        registerScoreBtn.disabled = false;
+        localScoreMsg.style.display = 'none';
+        updateRankingDisplay(currentVideoId, currentDiff, resultRankingList);
+    }
 }
 
 registerScoreBtn.addEventListener('click', async () => {
+    if (playMode === 'LOCAL') return; // Double check
     registerScoreBtn.disabled = true;
     const parsed = await parsePlayerName(playerNameInput.value.trim() || "");
     await window.saveGameScore({ playerName: parsed.name, playerTrip: parsed.trip, comment: playerCommentInput.value.trim() || "", score: score, videoId: currentVideoId, difficulty: currentDiff });
@@ -1473,30 +1491,15 @@ document.querySelectorAll('.touch-btn').forEach(btn => {
 startBtn.addEventListener('click', startGame);
 retryBtn.addEventListener('click', () => location.reload());
 
-function resize() { 
-    canvas.width = gameContainer.clientWidth; 
-    canvas.height = gameContainer.clientHeight; 
-    visualizerCanvas.width = gameContainer.clientWidth;
-    visualizerCanvas.height = 300; // Increase for background effect
-}
+function resize() { canvas.width = gameContainer.clientWidth; canvas.height = gameContainer.clientHeight; }
 window.addEventListener('resize', resize); resize();
 
 window.addEventListener('DOMContentLoaded', () => {
-    toggleAnalysisBtn.style.display = 'none'; // 動画ロード後に表示
-
-    // ローカルストレージからのBPM復元
-    const savedBpm = localStorage.getItem('lastBpm');
-    if (savedBpm) bpmInput.value = savedBpm;
-
     const params = new URLSearchParams(window.location.search);
     const wait = setInterval(() => {
         if (typeof YT !== 'undefined' && YT.Player && typeof window.fetchSharedVideos === 'function') { 
-            // URLパラメータ優先、なければローカルストレージを確認
-            const vid = params.get('v') || localStorage.getItem('lastVideoId');
-            if (vid) { 
-                ytUrlInput.value = `https://www.youtube.com/watch?v=${vid}`; 
-                loadYoutube(vid); 
-            }
+            const vid = params.get('v');
+            if (vid) { ytUrlInput.value = `https://www.youtube.com/watch?v=${vid}`; loadYoutube(vid); }
             clearInterval(wait); 
         }
     }, 500);
