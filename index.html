@@ -207,9 +207,25 @@
         .touch-btn.active { background: rgba(0, 242, 255, 0.15); color: var(--neon-cyan); border-top: 5px solid var(--neon-cyan); text-shadow: 0 0 20px var(--neon-cyan); }
         
         /* Auto Map Settings Panel */
-        .bpm-controls { display: grid; grid-template-columns: 1fr 1fr auto; gap: 10px; margin-bottom: 10px; }
-        #tap-bpm-btn { background: var(--neon-pink); border: none; color: white; font-weight: 900; border-radius: 12px; cursor: pointer; box-shadow: 0 4px 10px var(--shadow-color); transition: all 0.1s; font-size: 13px; }
+        .bpm-controls { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 10px; }
+        
+        /* Control Item with Buttons */
+        .control-item { display: flex; flex-direction: column; }
+        .control-input-wrapper { display: flex; align-items: center; }
+        .control-input-wrapper input { border-radius: 0; border-left: none; border-right: none; flex-grow: 1; text-align: center; font-family: 'Exo 2'; }
+        .adj-btn { width: 30px; height: 100%; border: 1px solid rgba(128,128,128,0.2); background: var(--panel-bg); color: var(--text-color); cursor: pointer; font-weight: 900; display: flex; align-items: center; justify-content: center; }
+        .adj-btn:hover { background: rgba(255,255,255,0.1); color: var(--neon-cyan); }
+        .adj-btn.minus { border-radius: 14px 0 0 14px; border-right: none; }
+        .adj-btn.plus { border-radius: 0 14px 14px 0; border-left: none; }
+
+        .bpm-btn-group { grid-column: span 2; display: flex; gap: 10px; }
+
+        #tap-bpm-btn { background: var(--neon-pink); border: none; color: white; font-weight: 900; border-radius: 12px; cursor: pointer; box-shadow: 0 4px 10px var(--shadow-color); transition: all 0.1s; font-size: 12px; display: flex; align-items: center; justify-content: center; height: 38px; flex: 1; gap: 6px; }
         #tap-bpm-btn:active { transform: scale(0.95); background: #ff4da6; }
+        
+        #beat-guide-btn { background: var(--input-bg); border: 1px solid var(--panel-border); color: var(--text-color); font-weight: 900; border-radius: 12px; cursor: pointer; transition: all 0.2s; font-size: 12px; display: flex; align-items: center; justify-content: center; height: 38px; flex: 1; gap: 6px; }
+        #beat-guide-btn.active { background: var(--neon-cyan); color: #000; border-color: var(--neon-cyan); box-shadow: 0 0 15px var(--neon-cyan); }
+
         .setting-sub-label { font-size: 10px; color: var(--text-color); opacity: 0.6; text-align: left; margin-bottom: 4px; display: block; }
         .checkbox-container { display: flex; align-items: center; gap: 10px; margin-top: 5px; font-size: 13px; font-weight: 700; color: var(--text-color); }
         .checkbox-container input { width: auto; margin: 0; }
@@ -289,21 +305,35 @@
         <div class="input-group" id="auto-map-settings">
             <span class="input-label" data-i18n="label_map_settings">譜面生成設定 (AUTO MAP)</span>
             <div class="bpm-controls">
-                <div>
-                    <span class="setting-sub-label">BPM (Tempo)</span>
-                    <input type="number" id="bpm-input" value="120" min="40" max="300">
+                <div class="control-item">
+                    <span class="setting-sub-label">
+                        BPM
+                        <a id="search-bpm-link" href="#" style="color:var(--neon-cyan); text-decoration:none; margin-left:4px; font-size:10px; border:1px solid var(--neon-cyan); padding:1px 4px; border-radius:4px;">🔍検索</a>
+                    </span>
+                    <div class="control-input-wrapper">
+                        <button class="adj-btn minus" data-target="bpm" data-val="-1">-</button>
+                        <input type="number" id="bpm-input" value="120" min="40" max="300">
+                        <button class="adj-btn plus" data-target="bpm" data-val="1">+</button>
+                    </div>
                 </div>
-                <div>
-                    <span class="setting-sub-label">OFFSET (ms)</span>
-                    <input type="number" id="offset-input" value="100" step="10">
+                <div class="control-item">
+                    <span class="setting-sub-label">OFFSET(ms)</span>
+                    <div class="control-input-wrapper">
+                        <button class="adj-btn minus" data-target="offset" data-val="-10">-</button>
+                        <input type="number" id="offset-input" value="100" step="10">
+                        <button class="adj-btn plus" data-target="offset" data-val="10">+</button>
+                    </div>
                 </div>
-                <button id="tap-bpm-btn" title="再生中にリズムに合わせて4回以上タップ！">TAP<br>SYNC</button>
+                <div class="bpm-btn-group">
+                    <button id="tap-bpm-btn" title="再生中にリズムに合わせて4回以上タップ！"><span>🖐️</span> TAP SYNC</button>
+                    <button id="beat-guide-btn" class="active" title="BPMに合わせてバーが光ります。OFFSET調整用"><span>👁️</span> GUIDE ON</button>
+                </div>
             </div>
             <div class="checkbox-container">
                 <input type="checkbox" id="analyze-audio-dummy" checked>
                 <label for="analyze-audio-dummy" data-i18n="label_sync_beat">強拍を強調 (Sync Beat)</label>
             </div>
-            <div style="font-size: 10px; opacity: 0.6; margin-top: 5px;" data-i18n="msg_tap_instruction">※ YouTubeモード: 動画再生中にリズムに合わせてTAP連打で調整。<br>※ ローカルモード: 音声を自動解析して生成します。</div>
+            <div style="font-size: 10px; opacity: 0.6; margin-top: 5px;" data-i18n="msg_tap_instruction">※ YouTubeモード: 動画再生中にTAPまたはGUIDEを見ながら調整。<br>※ ローカルモード: 音声を自動解析して生成します。</div>
         </div>
 
         <div class="input-group">
@@ -587,7 +617,7 @@ const translations = {
         msg_reset_done: "初期設定に戻しました",
         label_map_settings: "譜面生成設定 (AUTO MAP)",
         label_sync_beat: "強拍を強調 (Sync Beat)",
-        msg_tap_instruction: "※ YouTubeモード: タップまたは検索で調整。<br>※ ローカルモード: 音声を自動解析して生成します。"
+        msg_tap_instruction: "※ YouTubeモード: 動画再生中にTAPまたはGUIDEを見ながら調整。<br>※ ローカルモード: 音声を自動解析して生成します。"
     },
     en: {
         score_label: "SCORE",
@@ -634,7 +664,7 @@ const translations = {
         msg_reset_done: "Keys reset to default",
         label_map_settings: "AUTO MAP SETTINGS",
         label_sync_beat: "Emphasize Strong Beats",
-        msg_tap_instruction: "* YouTube: Use Tap repeatedly during playback. <br>* Local: Auto-analyzed generation."
+        msg_tap_instruction: "* YouTube: Adjust using Tap or Guide. <br>* Local: Auto-analyzed generation."
     }
 };
 
@@ -678,6 +708,7 @@ const gamepadStatus = document.getElementById('gamepad-status');
 const bpmInput = document.getElementById('bpm-input');
 const offsetInput = document.getElementById('offset-input');
 const tapBpmBtn = document.getElementById('tap-bpm-btn');
+const beatGuideBtn = document.getElementById('beat-guide-btn');
 const analyzeAudioCheck = document.getElementById('analyze-audio-dummy');
 
 // Local File Elements
@@ -716,6 +747,7 @@ let ytPlayer;
 let currentLang = 'en';
 let uiText = translations.en;
 let detectedPeaks = []; // For Local Auto Map
+let beatGuideActive = true;
 
 // TAP BPM Logic
 let tapTimes = []; // システム時刻（BPM計算用）
@@ -838,19 +870,40 @@ function tapBpmHandler() {
             
             // オフセット計算（動画再生中のみ）
             if (isPlaying && tapVideoTimes.length > 0) {
-                // 最後のタップタイミングは「拍の頭」である可能性が高い
                 const lastTapVideoTime = tapVideoTimes[tapVideoTimes.length - 1];
                 const msPerBeat = 60000 / bpm;
-                
-                // 動画の0秒地点から、この最後のタップまでの時間をビート間隔で割った余りがオフセット
                 let calculatedOffset = Math.round(lastTapVideoTime % msPerBeat);
-                
-                // 反応遅延などの微調整はあえて入れず、計算値をそのまま出す
                 offsetInput.value = calculatedOffset;
             }
         }
     }
 }
+
+// Adjust Buttons Logic
+document.querySelectorAll('.adj-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        const targetId = btn.dataset.target + '-input';
+        const val = parseInt(btn.dataset.val);
+        const input = document.getElementById(targetId);
+        if (input) {
+            let newVal = parseInt(input.value) + val;
+            if (btn.dataset.target === 'bpm') newVal = Math.max(40, Math.min(300, newVal));
+            input.value = newVal;
+        }
+    });
+});
+
+// Beat Guide Toggle
+beatGuideBtn.addEventListener('click', () => {
+    beatGuideActive = !beatGuideActive;
+    if (beatGuideActive) {
+        beatGuideBtn.classList.add('active');
+        beatGuideBtn.innerHTML = "GUIDE<br>ON";
+    } else {
+        beatGuideBtn.classList.remove('active');
+        beatGuideBtn.innerHTML = "GUIDE<br>OFF";
+    }
+});
 
 // TikTokデータ削除実行
 cleanupTiktokBtn.addEventListener('click', async () => {
@@ -1298,20 +1351,38 @@ function drawArrowNote(lane, x, y, size, type = 'normal') {
     ctx.rotate([-Math.PI/2, Math.PI, 0, Math.PI/2][lane]);
     
     // Scale up slightly for strong notes
-    if (type === 'strong') ctx.scale(1.1, 1.1);
+    if (type === 'strong') {
+        ctx.scale(1.2, 1.2); // More visibly large
+        ctx.shadowBlur = 20;
+        ctx.shadowColor = "white";
+    }
 
     ctx.beginPath();
     ctx.moveTo(0, -half); ctx.lineTo(half, 0); ctx.lineTo(quarter, 0); ctx.lineTo(quarter, half); ctx.lineTo(-quarter, half); ctx.lineTo(-quarter, 0); ctx.lineTo(-half, 0);
-    ctx.closePath(); ctx.fill();
+    ctx.closePath(); 
+    
+    // Fill color logic
+    if (type === 'strong') {
+        ctx.fillStyle = "#ffffff"; // White Flash for strong notes
+    } else {
+        ctx.fillStyle = CORE_COLORS[lane];
+    }
+    
+    ctx.fill();
     
     // Add inner detail
-    ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
+    if (type === 'strong') {
+        ctx.fillStyle = CORE_COLORS[lane]; // Inner color
+    } else {
+        ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
+    }
+    
     ctx.beginPath(); ctx.moveTo(0, -half + 4); ctx.lineTo(half - 8, 0); ctx.lineTo(-half + 8, 0); ctx.closePath(); ctx.fill();
     
     // Extra glow for strong notes
     if (type === 'strong') {
-        ctx.strokeStyle = "white";
-        ctx.lineWidth = 2;
+        ctx.strokeStyle = CORE_COLORS[lane];
+        ctx.lineWidth = 3;
         ctx.stroke();
     }
 
@@ -1370,17 +1441,48 @@ function draw() {
     }
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     const laneWidth = canvas.width / LANE_COUNT, hitY = canvas.height * HIT_LINE_Y, config = DIFFICULTY_CONFIG[currentDiff], isLight = document.body.classList.contains('light-mode');
+    
+    // Draw Lanes
     for (let i = 0; i < LANE_COUNT; i++) {
         ctx.fillStyle = activeLanes[i] ? (isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.12)') : 'rgba(128,128,128,0.02)';
         ctx.fillRect(i * laneWidth, 0, laneWidth, canvas.height);
         ctx.strokeStyle = activeLanes[i] ? CORE_COLORS[i] : (isLight ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.15)');
         ctx.lineWidth = 5; ctx.beginPath(); ctx.moveTo(i * laneWidth + 10, hitY); ctx.lineTo((i + 1) * laneWidth - 10, hitY); ctx.stroke();
     }
+
+    // Draw Beat Guide
+    if (beatGuideActive) {
+        const bpm = parseInt(bpmInput.value) || 120;
+        const offset = parseInt(offsetInput.value) || 0;
+        const msPerBeat = 60000 / bpm;
+        
+        // Calculate beat position based on time
+        // We want a bar that passes the hit line exactly on the beat
+        // similar to a note but purely visual
+        
+        // Find next beat time relative to now
+        const timeSinceOffset = now - offset;
+        const currentBeatIndex = Math.floor(timeSinceOffset / msPerBeat);
+        
+        // Draw upcoming visual guides
+        for(let i = 0; i < 4; i++) {
+            const beatTime = offset + ((currentBeatIndex + 1 + i) * msPerBeat);
+            const timeDiff = beatTime - now;
+            const y = hitY - (timeDiff * config.speed);
+            
+            if (y > -50 && y < canvas.height) {
+                ctx.fillStyle = "rgba(255, 255, 255, 0.5)";
+                ctx.fillRect(0, y - 2, canvas.width, 4); // Thin white bar across screen
+            }
+        }
+    }
+
+    // Draw Notes
     notes.forEach(note => {
         if (note.hit) return;
         const timeDiff = note.time - now, y = hitY - (timeDiff * config.speed);
         if (y > -100 && y < canvas.height + 100) {
-            ctx.fillStyle = CORE_COLORS[note.lane]; ctx.shadowBlur = isLight ? 12 : 20; ctx.shadowColor = CORE_COLORS[note.lane];
+            ctx.shadowBlur = 0; // Reset
             drawArrowNote(note.lane, (note.lane + 0.5) * laneWidth, y, laneWidth * 0.7, note.type);
             ctx.shadowBlur = 0;
         }
@@ -1390,6 +1492,8 @@ function draw() {
             judgmentText.style.color = "#666"; judgmentText.style.textShadow = "none";
         }
     });
+    
+    // Draw Particles
     particles = particles.filter(p => p.life > 0);
     particles.forEach(p => {
         ctx.globalAlpha = p.life; ctx.fillStyle = p.color;
